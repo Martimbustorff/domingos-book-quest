@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Volume2 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { quizEventSchema } from "@/lib/validation";
 
 interface Question {
   text: string;
@@ -27,6 +28,13 @@ const Quiz = () => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [score, setScore] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserId(user?.id || null);
+    });
+  }, []);
 
   // Fetch or generate quiz
   const { data: quizData, isLoading } = useQuery({
@@ -41,12 +49,23 @@ const Quiz = () => {
         throw error;
       }
 
-      // Track quiz start event
-      await supabase.from("events").insert({
-        event_type: "quiz_started",
-        book_id: bookId,
-        age_band: difficulty,
-      });
+      // Track quiz start event with validation
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      try {
+        const eventData = quizEventSchema.parse({
+          event_type: "quiz_started",
+          book_id: bookId,
+          age_band: difficulty,
+          user_id: user?.id,
+        });
+
+        await supabase.from("events").insert({
+          ...eventData,
+        });
+      } catch (validationError) {
+        console.error("Event validation failed:", validationError);
+      }
 
       return data;
     },
@@ -80,16 +99,26 @@ const Quiz = () => {
       setSelectedAnswer(null);
       setShowFeedback(false);
     } else {
-      // Quiz complete - track event, add to popular books, and navigate to results
-      await Promise.all([
-        supabase.from("events").insert({
+      // Quiz complete - track event with validation, add to popular books
+      try {
+        const eventData = quizEventSchema.parse({
           event_type: "quiz_completed",
           book_id: bookId,
           age_band: difficulty,
           score: score,
-        }),
-        supabase.rpc("increment_book_popularity", { p_book_id: bookId })
-      ]);
+          user_id: userId,
+        });
+
+        await Promise.all([
+          supabase.from("events").insert({
+            ...eventData,
+          }),
+          supabase.rpc("increment_book_popularity", { p_book_id: bookId })
+        ]);
+      } catch (validationError) {
+        console.error("Event validation failed:", validationError);
+        toast.error("Failed to save quiz results");
+      }
 
       navigate(
         `/result?score=${score}&total=${questions.length}&bookId=${bookId}`

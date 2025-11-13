@@ -2,12 +2,16 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Star } from "lucide-react";
 import mascotBulldog from "@/assets/mascot-bulldog.png";
+import AuthButton from "@/components/AuthButton";
 
 const Home = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="absolute top-4 right-4">
+        <AuthButton />
+      </div>
       <div className="max-w-md w-full space-y-8 sm:space-y-12 text-center">
         {/* Mascot */}
         <div className="flex justify-center animate-float">
