@@ -1,1 +1,4 @@
 project_id = "hoxubepipusimfbkzbxr"
+
+[functions.fetch-book-covers]
+verify_jwt = false

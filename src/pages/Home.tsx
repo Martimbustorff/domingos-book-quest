@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Star } from "lucide-react";
-import mascotOwl from "@/assets/mascot-owl.png";
+import mascotBulldog from "@/assets/mascot-bulldog.png";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -12,8 +12,8 @@ const Home = () => {
         {/* Mascot */}
         <div className="flex justify-center animate-bounce-gentle">
           <img 
-            src={mascotOwl} 
-            alt="Domingos the Reading Owl" 
+            src={mascotBulldog} 
+            alt="Domingos the Reading Bulldog" 
             className="w-32 h-32 md:w-40 md:h-40"
           />
         </div>
