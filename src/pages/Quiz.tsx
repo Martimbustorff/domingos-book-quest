@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Volume2 } from "lucide-react";
+import confetti from "canvas-confetti";
 
 interface Question {
   text: string;
@@ -63,22 +64,32 @@ const Quiz = () => {
     setAnswers([...answers, isCorrect]);
     if (isCorrect) {
       setScore(score + 1);
+      // Trigger confetti for correct answer
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#6366F1', '#22D3EE', '#F472B6', '#A78BFA']
+      });
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer(null);
       setShowFeedback(false);
     } else {
-      // Quiz complete - track event and navigate to results
-      supabase.from("events").insert({
-        event_type: "quiz_completed",
-        book_id: bookId,
-        age_band: difficulty,
-        score: score,
-      });
+      // Quiz complete - track event, add to popular books, and navigate to results
+      await Promise.all([
+        supabase.from("events").insert({
+          event_type: "quiz_completed",
+          book_id: bookId,
+          age_band: difficulty,
+          score: score,
+        }),
+        supabase.rpc("increment_book_popularity", { p_book_id: bookId })
+      ]);
 
       navigate(
         `/result?score=${score}&total=${questions.length}&bookId=${bookId}`
@@ -117,8 +128,8 @@ const Quiz = () => {
   const progress = ((currentQuestion + 1) / questions.length) * 100;
 
   return (
-    <div className="min-h-screen p-6 pb-24">
-      <div className="max-w-2xl mx-auto space-y-8">
+    <div className="min-h-screen p-4 sm:p-6 pb-24">
+      <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
         {/* Progress */}
         <div className="space-y-3">
           <div className="flex justify-between text-sm text-muted-foreground font-medium">
@@ -129,18 +140,18 @@ const Quiz = () => {
         </div>
 
         {/* Question */}
-        <Card className="p-8 space-y-4">
-          <div className="flex items-start gap-4">
-            <h2 className="text-2xl md:text-3xl font-bold flex-1 gradient-text">
+        <Card className="p-6 sm:p-8 space-y-4">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold flex-1 gradient-text leading-tight">
               {currentQ.text}
             </h2>
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full flex-shrink-0 hover:bg-accent/20"
+              className="rounded-full flex-shrink-0 hover:bg-accent/20 min-w-[44px] min-h-[44px]"
               onClick={() => speakText(currentQ.text)}
             >
-              <Volume2 className="h-6 w-6" />
+              <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />
             </Button>
           </div>
         </Card>
@@ -156,21 +167,21 @@ const Quiz = () => {
             return (
               <Card
                 key={index}
-                className={`p-6 cursor-pointer transition-all quiz-button ${
+                className={`p-5 sm:p-6 cursor-pointer transition-all quiz-button min-h-[64px] sm:min-h-[72px] ${
                   showCorrect
-                    ? "bg-quiz-correct border-2 border-quiz-correct-border"
+                    ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-2 border-green-500 animate-pop-in"
                     : showWrong
-                    ? "bg-quiz-wrong border-2 border-quiz-wrong-border"
+                    ? "bg-muted/50 border-2 border-border"
                     : isSelected
                     ? "border-2 border-primary shadow-[0_0_20px_rgba(99,102,241,0.3)]"
-                    : "hover:border-primary/50"
+                    : "hover:border-primary/50 active:scale-[0.98]"
                 }`}
                 onClick={() => handleAnswerSelect(index)}
               >
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 text-lg md:text-xl font-semibold">{option}</div>
-                  {showCorrect && <span className="text-3xl">✓</span>}
-                  {showWrong && <span className="text-3xl">✗</span>}
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="flex-1 text-base sm:text-lg md:text-xl font-semibold">{option}</div>
+                  {showCorrect && <span className="text-2xl sm:text-3xl">✓</span>}
+                  {showWrong && <span className="text-2xl sm:text-3xl opacity-50">✗</span>}
                 </div>
               </Card>
             );
@@ -179,17 +190,17 @@ const Quiz = () => {
 
         {/* Feedback */}
         {showFeedback && (
-          <Card className="p-8 text-center space-y-4 animate-in fade-in">
+          <Card className="p-6 sm:p-8 text-center space-y-3 sm:space-y-4 animate-in fade-in">
             {selectedAnswer === currentQ.correct_index ? (
               <>
-                <p className="text-4xl animate-pop-in">🎉</p>
-                <p className="text-2xl font-bold text-success">Awesome! You got it!</p>
+                <p className="text-3xl sm:text-4xl animate-pop-in">🎉</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">Awesome! You got it!</p>
               </>
             ) : (
               <>
-                <p className="text-4xl animate-wiggle">💪</p>
-                <p className="text-2xl font-bold">Good try! Keep going!</p>
-                <p className="text-muted-foreground text-lg font-medium mt-2">
+                <p className="text-3xl sm:text-4xl animate-wiggle">💪</p>
+                <p className="text-xl sm:text-2xl font-bold">Good try! Keep going!</p>
+                <p className="text-muted-foreground text-base sm:text-lg font-medium mt-2">
                   The answer was: {currentQ.options[currentQ.correct_index]}
                 </p>
               </>
