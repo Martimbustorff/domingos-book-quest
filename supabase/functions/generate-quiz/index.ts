@@ -6,6 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper function to add timeout to fetch requests
+async function fetchWithTimeout(url: string, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -33,6 +51,11 @@ serve(async (req) => {
     }
 
     // Fetch book content from multiple sources
+    console.log(`=== Content Fetching Started ===`);
+    console.log(`Book: "${book.title}" by ${book.author || 'unknown'}`);
+    console.log(`Book ID: ${bookId}`);
+    console.log(`Open Library ID: ${book.open_library_id || 'none'}`);
+    
     let bookDescription = "";
     let bookSubjects: string[] = [];
     let contentSource = "none";
@@ -40,10 +63,11 @@ serve(async (req) => {
     // Priority 1: Try Google Books API
     try {
       const searchQuery = `${book.title}${book.author ? ` ${book.author}` : ''}`;
-      console.log(`Searching Google Books for: ${searchQuery}`);
+      console.log(`[1/5] Searching Google Books for: ${searchQuery}`);
       
-      const gbResponse = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=3`
+      const gbResponse = await fetchWithTimeout(
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=3`,
+        10000
       );
       
       if (gbResponse.ok) {
@@ -70,10 +94,11 @@ serve(async (req) => {
     // Priority 2: Fallback to Open Library
     if (!bookDescription && book.open_library_id) {
       try {
-        console.log(`Fetching content from Open Library: ${book.open_library_id}`);
+        console.log(`[2/5] Fetching content from Open Library: ${book.open_library_id}`);
         
-        const olResponse = await fetch(
-          `https://openlibrary.org${book.open_library_id}.json`
+        const olResponse = await fetchWithTimeout(
+          `https://openlibrary.org${book.open_library_id}.json`,
+          10000
         );
         
         if (olResponse.ok) {
@@ -94,10 +119,11 @@ serve(async (req) => {
           // Get subjects/themes
           bookSubjects = olData.subjects || [];
           
-          bookDescription = olData.description.value;
-          contentSource = "open_library";
-          console.log(`✓ Open Library: Found description (${bookDescription.length} chars)`);
-          console.log(`Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
+          if (bookDescription) {
+            contentSource = "open_library";
+            console.log(`✓ Open Library: Found description (${bookDescription.length} chars)`);
+            console.log(`Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch from Open Library:", error);
@@ -106,6 +132,7 @@ serve(async (req) => {
 
     // Priority 3: Check for user-submitted content
     if (!bookDescription) {
+      console.log(`[3/5] Checking user-submitted content...`);
       const { data: userContent } = await supabase
         .from("book_content")
         .select("description, subjects")
@@ -127,10 +154,11 @@ serve(async (req) => {
     if (!bookDescription) {
       try {
         const wikiQuery = `${book.title} ${book.author || ''} children's book`;
-        console.log(`Searching Wikipedia for: ${wikiQuery}`);
+        console.log(`[4/5] Searching Wikipedia for: ${wikiQuery}`);
         
-        const wikiResponse = await fetch(
-          `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro=true&explaintext=true&titles=${encodeURIComponent(wikiQuery)}&origin=*`
+        const wikiResponse = await fetchWithTimeout(
+          `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro=true&explaintext=true&titles=${encodeURIComponent(wikiQuery)}&origin=*`,
+          10000
         );
         
         if (wikiResponse.ok) {
@@ -149,10 +177,61 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Content source: ${contentSource}`);
+    // Priority 5: Use Lovable AI web search as LAST RESORT
+    if (!bookDescription) {
+      try {
+        console.log(`[5/5] Using AI web search as last resort...`);
+        
+        const searchPrompt = `Search for a detailed plot summary of the children's book "${book.title}" by ${book.author || "unknown author"}. 
+
+Return a factual 200-300 word plot summary that includes:
+- Main characters and their names
+- Key plot events in sequence
+- Important details like objects, locations, and what happens
+- How the story resolves
+
+CRITICAL: If you cannot find reliable information about this specific book, respond with exactly: NO_INFO_FOUND`;
+
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        const aiSearchResponse = await fetchWithTimeout(
+          "https://ai.gateway.lovable.dev/v1/chat/completions",
+          15000
+        );
+        
+        const aiSearchData = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: "You are a research assistant. Search the web for accurate book information." },
+              { role: "user", content: searchPrompt }
+            ],
+          }),
+        }).then(r => r.json());
+        
+        const summary = aiSearchData.choices?.[0]?.message?.content;
+        
+        if (summary && !summary.includes("NO_INFO_FOUND")) {
+          bookDescription = summary;
+          contentSource = "ai_web_search";
+          console.log(`✓ AI Web Search: Generated description (${bookDescription.length} chars)`);
+        }
+      } catch (error) {
+        console.error("AI web search failed:", error);
+      }
+    }
+
+    console.log(`=== Content Fetching Complete ===`);
+    console.log(`Source used: ${contentSource}`);
+    console.log(`Description length: ${bookDescription ? bookDescription.length : 0} chars`);
+    console.log(`Subjects found: ${bookSubjects.length}`);
 
     if (!bookDescription) {
-      console.warn(`No description found for book: ${book.title}. Returning error.`);
+      console.warn(`No description found for book: ${book.title} after trying all sources.`);
       return new Response(
         JSON.stringify({
           error: "insufficient_data",
