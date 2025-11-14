@@ -10,6 +10,9 @@ import BookDetail from "./pages/BookDetail";
 import Quiz from "./pages/Quiz";
 import Result from "./pages/Result";
 import Dashboard from "./pages/Dashboard";
+import ParentDashboard from "./pages/ParentDashboard";
+import ChildProgress from "./pages/ChildProgress";
+import AcceptInvitation from "./pages/AcceptInvitation";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -30,6 +33,9 @@ const App = () => (
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/result" element={<Result />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/parent-dashboard" element={<ParentDashboard />} />
+          <Route path="/child/:childId" element={<ChildProgress />} />
+          <Route path="/accept-invitation/:code" element={<AcceptInvitation />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

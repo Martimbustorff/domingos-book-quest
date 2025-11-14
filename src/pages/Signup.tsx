@@ -3,15 +3,17 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Users, GraduationCap, User } from "lucide-react";
 
 const Signup = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [role, setRole] = useState<"student" | "parent" | "teacher">("student");
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -26,7 +28,7 @@ const Signup = () => {
 
       if (error) throw error;
 
-      // Create profile
+      // Create profile and assign role
       if (data.user) {
         const { error: profileError } = await supabase
           .from("profiles")
@@ -38,10 +40,35 @@ const Signup = () => {
         if (profileError) {
           console.error("Profile creation error:", profileError);
         }
+
+        // Assign role
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: data.user.id,
+            role: role,
+          });
+
+        if (roleError) {
+          console.error("Role assignment error:", roleError);
+        }
+
+        // Initialize user stats for students
+        if (role === "student") {
+          const { error: statsError } = await supabase
+            .from("user_stats")
+            .insert({
+              user_id: data.user.id,
+            });
+
+          if (statsError) {
+            console.error("Stats initialization error:", statsError);
+          }
+        }
       }
 
       toast.success("Account created! Welcome to Domingos Book Quiz!");
-      navigate("/");
+      navigate(role === "student" ? "/" : "/parent-dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
     } finally {
@@ -62,9 +89,53 @@ const Signup = () => {
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="displayName" className="text-sm font-medium">
+            <Label htmlFor="role" className="text-sm font-medium">
+              I am a...
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setRole("student")}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  role === "student"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <User className="h-6 w-6 mx-auto mb-2" />
+                <div className="text-sm font-medium">Student</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("parent")}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  role === "parent"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <Users className="h-6 w-6 mx-auto mb-2" />
+                <div className="text-sm font-medium">Parent</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("teacher")}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  role === "teacher"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <GraduationCap className="h-6 w-6 mx-auto mb-2" />
+                <div className="text-sm font-medium">Teacher</div>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="displayName" className="text-sm font-medium">
               Name (optional)
-            </label>
+            </Label>
             <Input
               id="displayName"
               type="text"
