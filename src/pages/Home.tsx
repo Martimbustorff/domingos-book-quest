@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Star, TrendingUp, Users } from "lucide-react";
+import { BookOpen, Star, TrendingUp, Users, BookPlus } from "lucide-react";
 import mascotBulldog from "@/assets/mascot-bulldog.png";
 import AuthButton from "@/components/AuthButton";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,15 +60,27 @@ const Home = () => {
         {/* Main Actions */}
         <div className="space-y-4 sm:space-y-6 pt-6 sm:pt-8 px-2">
           {isAuthenticated && userRole && (userRole === "parent" || userRole === "teacher") && (
-            <Button
-              size="lg"
-              variant="gradient"
-              className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
-              onClick={() => navigate("/parent-dashboard")}
-            >
-              <Users className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
-              👨‍👩‍👧‍👦 {userRole === "parent" ? "Parent" : "Teacher"} Dashboard
-            </Button>
+            <>
+              <Button
+                size="lg"
+                variant="gradient"
+                className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
+                onClick={() => navigate("/parent-dashboard")}
+              >
+                <Users className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+                👨‍👩‍👧‍👦 {userRole === "parent" ? "Parent" : "Teacher"} Dashboard
+              </Button>
+              
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
+                onClick={() => navigate("/contribute")}
+              >
+                <BookPlus className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+                📝 Contribute Content
+              </Button>
+            </>
           )}
           
           <Button

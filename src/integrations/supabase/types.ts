@@ -50,6 +50,59 @@ export type Database = {
         }
         Relationships: []
       }
+      book_content: {
+        Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          book_id: string
+          created_at: string | null
+          description: string
+          id: string
+          key_characters: Json | null
+          plot_points: Json | null
+          subjects: string[] | null
+          submitted_by: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          book_id: string
+          created_at?: string | null
+          description: string
+          id?: string
+          key_characters?: Json | null
+          plot_points?: Json | null
+          subjects?: string[] | null
+          submitted_by: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          book_id?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          key_characters?: Json | null
+          plot_points?: Json | null
+          subjects?: string[] | null
+          submitted_by?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_content_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           age_max: number | null
@@ -264,32 +317,41 @@ export type Database = {
         Row: {
           age_band: string
           book_id: string
+          content_quality_score: number | null
+          content_source: string | null
           created_at: string
           difficulty: string
           id: string
           num_questions: number
           questions_json: Json
           source: string | null
+          user_ratings: Json | null
         }
         Insert: {
           age_band: string
           book_id: string
+          content_quality_score?: number | null
+          content_source?: string | null
           created_at?: string
           difficulty: string
           id?: string
           num_questions: number
           questions_json: Json
           source?: string | null
+          user_ratings?: Json | null
         }
         Update: {
           age_band?: string
           book_id?: string
+          content_quality_score?: number | null
+          content_source?: string | null
           created_at?: string
           difficulty?: string
           id?: string
           num_questions?: number
           questions_json?: Json
           source?: string | null
+          user_ratings?: Json | null
         }
         Relationships: [
           {
@@ -326,6 +388,145 @@ export type Database = {
             columns: ["achievement_id"]
             isOneToOne: false
             referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_books: {
+        Row: {
+          added_by: string
+          age_max: number | null
+          age_min: number | null
+          approved: boolean | null
+          approved_by: string | null
+          author: string | null
+          cover_url: string | null
+          created_at: string | null
+          id: string
+          merged_to_book_id: string | null
+          title: string
+        }
+        Insert: {
+          added_by: string
+          age_max?: number | null
+          age_min?: number | null
+          approved?: boolean | null
+          approved_by?: string | null
+          author?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          merged_to_book_id?: string | null
+          title: string
+        }
+        Update: {
+          added_by?: string
+          age_max?: number | null
+          age_min?: number | null
+          approved?: boolean | null
+          approved_by?: string | null
+          author?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          merged_to_book_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_books_merged_to_book_id_fkey"
+            columns: ["merged_to_book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_contributions: {
+        Row: {
+          contribution_type: string
+          created_at: string | null
+          id: string
+          reference_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          contribution_type: string
+          created_at?: string | null
+          id?: string
+          reference_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          contribution_type?: string
+          created_at?: string | null
+          id?: string
+          reference_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_quiz_questions: {
+        Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          book_id: string
+          correct_index: number
+          correct_rate: number | null
+          created_at: string | null
+          created_by: string
+          difficulty: string
+          id: string
+          options: string[]
+          question_text: string
+          times_used: number | null
+        }
+        Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          book_id: string
+          correct_index: number
+          correct_rate?: number | null
+          created_at?: string | null
+          created_by: string
+          difficulty: string
+          id?: string
+          options: string[]
+          question_text: string
+          times_used?: number | null
+        }
+        Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          book_id?: string
+          correct_index?: number
+          correct_rate?: number | null
+          created_at?: string | null
+          created_by?: string
+          difficulty?: string
+          id?: string
+          options?: string[]
+          question_text?: string
+          times_used?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_quiz_questions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
             referencedColumns: ["id"]
           },
         ]

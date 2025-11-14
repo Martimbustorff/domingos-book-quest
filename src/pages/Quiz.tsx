@@ -12,7 +12,7 @@ import { quizEventSchema } from "@/lib/validation";
 
 interface Question {
   text: string;
-  options: string[];
+  options: string[]; // Now 4 options: 3 answers + "None of the above"
   correct_index: number;
 }
 

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Book, Play } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ArrowLeft, Book, Play, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -38,6 +39,21 @@ const BookDetail = () => {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Check content quality
+  const { data: quizQuality } = useQuery({
+    queryKey: ["quiz-quality", bookId, selectedDifficulty],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("quiz_templates")
+        .select("content_quality_score, content_source")
+        .eq("book_id", bookId)
+        .eq("difficulty", selectedDifficulty)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!bookId && !!selectedDifficulty,
   });
 
   const handleStartQuiz = () => {
@@ -107,6 +123,24 @@ const BookDetail = () => {
             <Play className="mr-2 h-5 w-5" />
             🎥 Watch a video first
           </Button>
+        )}
+
+        {/* Content Quality Warning */}
+        {quizQuality && quizQuality.content_quality_score && quizQuality.content_quality_score < 70 && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Limited Content Available</AlertTitle>
+            <AlertDescription>
+              This quiz may have basic questions. Help improve it by adding book details!
+              <Button 
+                variant="link" 
+                className="p-0 h-auto ml-1"
+                onClick={() => navigate(`/contribute?book=${bookId}`)}
+              >
+                Contribute →
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Quiz Options */}
