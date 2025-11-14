@@ -32,6 +32,58 @@ serve(async (req) => {
       throw new Error("Book not found");
     }
 
+    // Fetch book content from Open Library API
+    let bookDescription = "";
+    let bookSubjects: string[] = [];
+
+    if (book.open_library_id) {
+      try {
+        console.log(`Fetching content from Open Library: ${book.open_library_id}`);
+        
+        const olResponse = await fetch(
+          `https://openlibrary.org${book.open_library_id}.json`
+        );
+        
+        if (olResponse.ok) {
+          const olData = await olResponse.json();
+          
+          // Extract description (can be string or object)
+          if (typeof olData.description === 'string') {
+            bookDescription = olData.description;
+          } else if (olData.description?.value) {
+            bookDescription = olData.description.value;
+          }
+          
+          // Get first sentence as additional context
+          if (olData.first_sentence?.value) {
+            bookDescription = `${olData.first_sentence.value}\n\n${bookDescription}`;
+          }
+          
+          // Get subjects/themes
+          bookSubjects = olData.subjects || [];
+          
+          console.log(`Fetched description length: ${bookDescription.length} chars`);
+          console.log(`Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
+        }
+      } catch (error) {
+        console.error("Failed to fetch from Open Library:", error);
+      }
+    }
+
+    if (!bookDescription) {
+      console.warn(`No description found for book: ${book.title}. Returning error.`);
+      return new Response(
+        JSON.stringify({
+          error: "insufficient_data",
+          message: "This book doesn't have detailed content available. Quiz accuracy cannot be guaranteed.",
+        }),
+        {
+          status: 422,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Map difficulty to age band
     const ageBandMap: Record<string, string> = {
       easy: "5-6",
@@ -78,8 +130,16 @@ serve(async (req) => {
 
 ${difficultyInstructions[difficulty] || difficultyInstructions.medium}
 
+BOOK CONTENT (USE THIS AS YOUR ONLY SOURCE):
+${bookDescription}
+
+${bookSubjects.length > 0 ? `THEMES: ${bookSubjects.slice(0, 10).join(', ')}` : ''}
+
+CRITICAL: Base ALL questions ONLY on the book content provided above. DO NOT use general knowledge or make assumptions. If the book content doesn't mention specific details (like what was stolen or what characters did), DO NOT create questions about those details.
+
 CRITICAL REQUIREMENTS:
 - Generate EXACTLY ${numQuestions} questions
+- Base questions ONLY on provided book content - NEVER guess or hallucinate details
 - Each question must be fun and encouraging
 - Question text: maximum 20 words, simple language
 - Provide exactly 3 options per question
@@ -154,6 +214,12 @@ Return ONLY valid JSON in this exact format:
       }
     }
 
+    // Validate questions against book content
+    console.log("Generated questions based on book content:");
+    for (const q of questions) {
+      console.log(`Q: ${q.text} | Correct: ${q.options[q.correct_index]}`);
+    }
+
     // Save quiz template to database
     const { error: insertError } = await supabase.from("quiz_templates").insert({
       book_id: bookId,
@@ -161,7 +227,7 @@ Return ONLY valid JSON in this exact format:
       difficulty,
       num_questions: numQuestions,
       questions_json: questions,
-      source: "ai_generated",
+      source: "ai_generated_with_content",
     });
 
     if (insertError) {
