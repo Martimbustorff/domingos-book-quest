@@ -12,15 +12,30 @@ const Popular = () => {
     queryKey: ["popular-books"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("popular_books")
-        .select(`
-          *,
-          books (*)
-        `)
-        .order("ranking", { ascending: true })
-        .limit(20);
+        .from("popular_books_dynamic")
+        .select("*")
+        .order("ranking", { ascending: true });
 
       if (error) throw error;
+      
+      // Fallback: if no quiz data yet, show recently added books
+      if (!data || data.length === 0) {
+        const { data: fallback } = await supabase
+          .from("books")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(20);
+        
+        return fallback?.map((book, idx) => ({
+          ...book,
+          book_id: book.id,
+          ranking: idx + 1,
+          quiz_count: 0,
+          unique_users: 0,
+          avg_score: null
+        }));
+      }
+      
       return data;
     },
   });
@@ -64,18 +79,17 @@ const Popular = () => {
 
         {popularBooks && popularBooks.length > 0 && (
           <div className="space-y-4 sm:space-y-6">
-            {popularBooks.map((item: any, index: number) => {
-              const book = item.books;
+            {popularBooks.map((book: any, index: number) => {
               return (
                 <Card
-                  key={item.id}
+                  key={book.book_id}
                   className="p-5 sm:p-6 cursor-pointer card-lift quiz-button animate-fade-in-up min-h-[100px]"
                   style={{ animationDelay: `${index * 50}ms` }}
-                  onClick={() => navigate(`/book/${book.id}`)}
+                  onClick={() => navigate(`/book/${book.book_id}`)}
                 >
                   <div className="flex gap-3 sm:gap-6 items-start">
                     <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground flex items-center justify-center font-bold text-base sm:text-lg shadow-[0_4px_12px_rgba(99,102,241,0.3)]">
-                      {item.ranking}
+                      {book.ranking}
                     </div>
                     {book.cover_url ? (
                       <img
@@ -93,9 +107,10 @@ const Popular = () => {
                       {book.author && (
                         <p className="text-muted-foreground font-medium text-sm sm:text-base">by {book.author}</p>
                       )}
-                      {item.typical_grade && (
+                      {book.quiz_count > 0 && (
                         <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2 font-medium">
-                          {item.typical_grade}
+                          🎯 {book.quiz_count} quiz{book.quiz_count !== 1 ? 'zes' : ''} • 
+                          👥 {book.unique_users} reader{book.unique_users !== 1 ? 's' : ''}{book.avg_score && ` • ⭐ ${book.avg_score}% avg`}
                         </p>
                       )}
                     </div>

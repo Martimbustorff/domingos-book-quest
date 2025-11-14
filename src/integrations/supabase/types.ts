@@ -101,6 +101,13 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "book_content_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
+          },
         ]
       }
       books: {
@@ -178,6 +185,13 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "events_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
+          },
         ]
       }
       guardian_relationships: {
@@ -246,6 +260,13 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "popular_books_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
+          },
         ]
       }
       profiles: {
@@ -311,6 +332,13 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "quiz_history_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
+          },
         ]
       }
       quiz_templates: {
@@ -360,6 +388,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "books"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_templates_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
           },
         ]
       }
@@ -439,6 +474,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "books"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_books_merged_to_book_id_fkey"
+            columns: ["merged_to_book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
           },
         ]
       }
@@ -528,6 +570,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "books"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_quiz_questions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
           },
         ]
       }
@@ -636,11 +685,33 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "youtube_videos_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "popular_books_dynamic"
+            referencedColumns: ["book_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      popular_books_dynamic: {
+        Row: {
+          age_max: number | null
+          age_min: number | null
+          author: string | null
+          avg_score: number | null
+          book_id: string | null
+          cover_url: string | null
+          last_quiz_at: string | null
+          quiz_count: number | null
+          ranking: number | null
+          title: string | null
+          unique_users: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
