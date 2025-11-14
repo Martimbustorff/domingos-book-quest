@@ -1,0 +1,361 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { Trophy, Star, Book, Flame, TrendingUp, Award, ArrowLeft } from "lucide-react";
+
+interface UserStats {
+  total_points: number;
+  quizzes_completed: number;
+  books_read: number;
+  current_streak: number;
+  longest_streak: number;
+}
+
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  earned_at?: string;
+}
+
+interface QuizHistoryItem {
+  id: string;
+  score: number;
+  total_questions: number;
+  difficulty: string;
+  points_earned: number;
+  completed_at: string;
+  books: {
+    title: string;
+    cover_url: string | null;
+  };
+}
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        navigate("/login");
+        return;
+      }
+
+      // Fetch user stats
+      const { data: statsData, error: statsError } = await supabase
+        .from("user_stats")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (statsError) throw statsError;
+
+      // If no stats exist, create initial record
+      if (!statsData) {
+        const { data: newStats, error: createError } = await supabase
+          .from("user_stats")
+          .insert({ user_id: user.id })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        setStats(newStats);
+      } else {
+        setStats(statsData);
+      }
+
+      // Fetch all achievements with user's earned status
+      const { data: allAchievements, error: achievementsError } = await supabase
+        .from("achievements")
+        .select("*")
+        .order("criteria_value", { ascending: true });
+
+      if (achievementsError) throw achievementsError;
+
+      // Fetch user's earned achievements
+      const { data: userAchievements, error: userAchievementsError } = await supabase
+        .from("user_achievements")
+        .select("achievement_id, earned_at")
+        .eq("user_id", user.id);
+
+      if (userAchievementsError) throw userAchievementsError;
+
+      // Merge achievements data
+      const earnedMap = new Map(
+        userAchievements?.map(ua => [ua.achievement_id, ua.earned_at]) || []
+      );
+
+      const mergedAchievements = allAchievements?.map(a => ({
+        ...a,
+        earned_at: earnedMap.get(a.id)
+      })) || [];
+
+      setAchievements(mergedAchievements);
+
+      // Fetch recent quiz history
+      const { data: historyData, error: historyError } = await supabase
+        .from("quiz_history")
+        .select(`
+          id,
+          score,
+          total_questions,
+          difficulty,
+          points_earned,
+          completed_at,
+          books (
+            title,
+            cover_url
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("completed_at", { ascending: false })
+        .limit(10);
+
+      if (historyError) throw historyError;
+      setQuizHistory(historyData || []);
+
+    } catch (error: any) {
+      toast({
+        title: "Error loading dashboard",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const earnedAchievements = achievements.filter(a => a.earned_at);
+  const lockedAchievements = achievements.filter(a => !a.earned_at);
+
+  return (
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold gradient-text">Your Dashboard</h1>
+            <p className="text-muted-foreground mt-2">Track your reading journey and achievements</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/")} className="rounded-[24px]">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Home
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Points</CardTitle>
+              <Trophy className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold gradient-text">{stats?.total_points || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Lifetime earnings</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Quizzes Completed</CardTitle>
+              <Star className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats?.quizzes_completed || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Total quizzes</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Books Read</CardTitle>
+              <Book className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats?.books_read || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Different books</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
+              <Flame className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats?.current_streak || 0} 🔥</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Best: {stats?.longest_streak || 0} days
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Achievements Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Achievements
+                </CardTitle>
+                <CardDescription>
+                  {earnedAchievements.length} of {achievements.length} unlocked
+                </CardDescription>
+              </div>
+              <Badge variant="secondary" className="text-lg px-4 py-2">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                {earnedAchievements.length}/{achievements.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Earned Achievements */}
+              {earnedAchievements.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 text-primary">Unlocked</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {earnedAchievements.map((achievement) => (
+                      <div
+                        key={achievement.id}
+                        className="flex flex-col items-center p-4 rounded-[16px] bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20"
+                      >
+                        <div className="text-4xl mb-2">{achievement.icon}</div>
+                        <p className="text-xs font-semibold text-center">{achievement.name}</p>
+                        <p className="text-xs text-muted-foreground text-center mt-1">
+                          {achievement.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Locked Achievements */}
+              {lockedAchievements.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Locked</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {lockedAchievements.map((achievement) => (
+                      <div
+                        key={achievement.id}
+                        className="flex flex-col items-center p-4 rounded-[16px] bg-muted/50 border border-border opacity-60"
+                      >
+                        <div className="text-4xl mb-2 grayscale">{achievement.icon}</div>
+                        <p className="text-xs font-semibold text-center">{achievement.name}</p>
+                        <p className="text-xs text-muted-foreground text-center mt-1">
+                          {achievement.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Quiz History */}
+        {quizHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Quizzes</CardTitle>
+              <CardDescription>Your latest quiz results</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {quizHistory.map((quiz) => (
+                  <div
+                    key={quiz.id}
+                    className="flex items-center justify-between p-4 rounded-[16px] glass-card"
+                  >
+                    <div className="flex items-center gap-3">
+                      {quiz.books.cover_url ? (
+                        <img
+                          src={quiz.books.cover_url}
+                          alt={quiz.books.title}
+                          className="w-12 h-16 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-12 h-16 bg-secondary rounded-lg flex items-center justify-center">
+                          <Book className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-semibold">{quiz.books.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {quiz.difficulty}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(quiz.completed_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold gradient-text">
+                        {quiz.score}/{quiz.total_questions}
+                      </p>
+                      <p className="text-xs text-muted-foreground">+{quiz.points_earned} pts</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Call to Action */}
+        <Card className="bg-gradient-to-r from-primary/10 to-accent/10">
+          <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6">
+            <div>
+              <h3 className="text-xl font-bold">Ready for your next quiz?</h3>
+              <p className="text-muted-foreground">Keep your streak going and earn more points!</p>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => navigate("/search")}
+              className="rounded-[24px] quiz-button"
+            >
+              <Book className="mr-2 h-5 w-5" />
+              Find a Book
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Star, RotateCcw, BookOpen } from "lucide-react";
+import { Star, RotateCcw, BookOpen, TrendingUp } from "lucide-react";
 import confetti from "canvas-confetti";
+import { supabase } from "@/integrations/supabase/client";
+import { updateUserStats } from "@/lib/achievements";
+import { toast } from "@/hooks/use-toast";
 
 const Result = () => {
   const [searchParams] = useSearchParams();
@@ -14,22 +17,57 @@ const Result = () => {
 
   const percentage = Math.round((score / total) * 100);
   const [points, setPoints] = useState(0);
+  const [saving, setSaving] = useState(true);
 
   useEffect(() => {
-    // Trigger confetti for good scores
-    if (percentage >= 70) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    }
+    const saveResults = async () => {
+      // Trigger confetti for good scores
+      if (percentage >= 70) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+      }
 
-    // Award points based on performance
-    const earnedPoints = score * 10;
-    const currentPoints = parseInt(localStorage.getItem("totalPoints") || "0");
-    localStorage.setItem("totalPoints", (currentPoints + earnedPoints).toString());
-    setPoints(earnedPoints);
+      // Award points based on performance
+      const earnedPoints = score * 10;
+      setPoints(earnedPoints);
+
+      // Save to database if user is authenticated
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user && bookId) {
+          await updateUserStats(
+            user.id,
+            bookId,
+            score,
+            total,
+            "medium", // You can pass difficulty from URL params if needed
+            earnedPoints
+          );
+        } else {
+          // Fallback to localStorage for non-authenticated users
+          const currentPoints = parseInt(localStorage.getItem("totalPoints") || "0");
+          localStorage.setItem("totalPoints", (currentPoints + earnedPoints).toString());
+        }
+      } catch (error: any) {
+        console.error("Error saving results:", error);
+        toast({
+          title: "Couldn't save your progress",
+          description: "But don't worry, your points are still counted!",
+          variant: "destructive",
+        });
+        // Fallback to localStorage
+        const currentPoints = parseInt(localStorage.getItem("totalPoints") || "0");
+        localStorage.setItem("totalPoints", (currentPoints + earnedPoints).toString());
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    saveResults();
   }, []);
 
   // Determine stars and message
@@ -118,6 +156,16 @@ const Result = () => {
           <Button
             size="lg"
             variant="gradient"
+            className="w-full h-14 sm:h-16 text-lg sm:text-xl rounded-[24px] quiz-button font-semibold min-h-[56px]"
+            onClick={() => navigate("/dashboard")}
+          >
+            <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+            📊 View Dashboard
+          </Button>
+
+          <Button
+            size="lg"
+            variant="outline"
             className="w-full h-14 sm:h-16 text-lg sm:text-xl rounded-[24px] quiz-button font-semibold min-h-[56px]"
             onClick={() => navigate("/")}
           >

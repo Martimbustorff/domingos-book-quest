@@ -9,6 +9,7 @@ import Popular from "./pages/Popular";
 import BookDetail from "./pages/BookDetail";
 import Quiz from "./pages/Quiz";
 import Result from "./pages/Result";
+import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/book/:bookId" element={<BookDetail />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/result" element={<Result />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

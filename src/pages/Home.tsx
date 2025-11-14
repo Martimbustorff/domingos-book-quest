@@ -1,11 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Star } from "lucide-react";
+import { BookOpen, Star, TrendingUp } from "lucide-react";
 import mascotBulldog from "@/assets/mascot-bulldog.png";
 import AuthButton from "@/components/AuthButton";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const Home = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsAuthenticated(!!user);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
@@ -34,6 +43,18 @@ const Home = () => {
 
         {/* Main Actions */}
         <div className="space-y-4 sm:space-y-6 pt-6 sm:pt-8 px-2">
+          {isAuthenticated && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
+              onClick={() => navigate("/dashboard")}
+            >
+              <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+              📊 My Dashboard
+            </Button>
+          )}
+          
           <Button
             size="lg"
             className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] shadow-[0_8px_32px_rgba(99,102,241,0.3)] hover:shadow-[0_12px_48px_rgba(99,102,241,0.5)] transition-all quiz-button min-h-[56px]"
