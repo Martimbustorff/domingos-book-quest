@@ -37,7 +37,7 @@ const Quiz = () => {
   }, []);
 
   // Fetch or generate quiz
-  const { data: quizData, isLoading } = useQuery({
+  const { data: quizData, isLoading, error: quizError } = useQuery({
     queryKey: ["quiz", bookId, numQuestions, difficulty],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("generate-quiz", {
@@ -45,6 +45,12 @@ const Quiz = () => {
       });
 
       if (error) {
+        // Check if it's an insufficient_data error (422 status)
+        if (data?.error === "insufficient_data") {
+          toast.error(data.message || "This book doesn't have enough content to generate a quiz.");
+          navigate(`/book/${bookId}`);
+          throw new Error("insufficient_data");
+        }
         toast.error("Failed to generate quiz. Please try again.");
         throw error;
       }
@@ -69,6 +75,7 @@ const Quiz = () => {
 
       return data;
     },
+    retry: false, // Don't retry on insufficient_data errors
   });
 
   const questions: Question[] = quizData?.questions || [];

@@ -193,12 +193,8 @@ Return a factual 200-300 word plot summary that includes:
 CRITICAL: If you cannot find reliable information about this specific book, respond with exactly: NO_INFO_FOUND`;
 
         const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-        const aiSearchResponse = await fetchWithTimeout(
-          "https://ai.gateway.lovable.dev/v1/chat/completions",
-          15000
-        );
         
-        const aiSearchData = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiSearchResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -211,14 +207,17 @@ CRITICAL: If you cannot find reliable information about this specific book, resp
               { role: "user", content: searchPrompt }
             ],
           }),
-        }).then(r => r.json());
+        });
         
-        const summary = aiSearchData.choices?.[0]?.message?.content;
-        
-        if (summary && !summary.includes("NO_INFO_FOUND")) {
-          bookDescription = summary;
-          contentSource = "ai_web_search";
-          console.log(`✓ AI Web Search: Generated description (${bookDescription.length} chars)`);
+        if (aiSearchResponse.ok) {
+          const aiSearchData = await aiSearchResponse.json();
+          const summary = aiSearchData.choices?.[0]?.message?.content;
+          
+          if (summary && !summary.includes("NO_INFO_FOUND")) {
+            bookDescription = summary;
+            contentSource = "ai_web_search";
+            console.log(`✓ AI Web Search: Generated description (${bookDescription.length} chars)`);
+          }
         }
       } catch (error) {
         console.error("AI web search failed:", error);
