@@ -5,13 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, User, Mail, Lock, TrendingUp, Users, Loader2 } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -181,8 +180,6 @@ const Settings = () => {
     );
   }
 
-  const hasParentOrTeacher = roles.some(r => r === "parent" || r === "teacher");
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 sm:p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -201,44 +198,6 @@ const Settings = () => {
             <p className="text-muted-foreground">Manage your account and preferences</p>
           </div>
         </div>
-
-        {/* Dashboard Links */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Your Dashboards
-            </CardTitle>
-            <CardDescription>Quick access to your progress and management</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-2 mb-4">
-              {roles.map(role => (
-                <Badge key={role} variant="secondary" className="capitalize">
-                  {role}
-                </Badge>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => navigate("/dashboard")}
-            >
-              <TrendingUp className="mr-2 h-4 w-4" />
-              My Progress Dashboard
-            </Button>
-            {hasParentOrTeacher && (
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => navigate("/parent-dashboard")}
-              >
-                <Users className="mr-2 h-4 w-4" />
-                {roles.includes("parent") ? "Parent" : "Teacher"} Dashboard
-              </Button>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Profile Information */}
         <Card className="glass-card">
