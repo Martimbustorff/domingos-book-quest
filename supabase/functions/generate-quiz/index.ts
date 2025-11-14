@@ -32,11 +32,43 @@ serve(async (req) => {
       throw new Error("Book not found");
     }
 
-    // Fetch book content from Open Library API
+    // Fetch book content from multiple sources
     let bookDescription = "";
     let bookSubjects: string[] = [];
+    let contentSource = "none";
 
-    if (book.open_library_id) {
+    // Priority 1: Try Google Books API
+    try {
+      const searchQuery = `${book.title}${book.author ? ` ${book.author}` : ''}`;
+      console.log(`Searching Google Books for: ${searchQuery}`);
+      
+      const gbResponse = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=3`
+      );
+      
+      if (gbResponse.ok) {
+        const gbData = await gbResponse.json();
+        
+        // Find the best match with longest description
+        for (const item of gbData.items || []) {
+          const volumeInfo = item.volumeInfo;
+          if (volumeInfo.description && volumeInfo.description.length > bookDescription.length) {
+            bookDescription = volumeInfo.description;
+            bookSubjects = volumeInfo.categories || [];
+            contentSource = "google_books";
+          }
+        }
+        
+        if (bookDescription) {
+          console.log(`✓ Google Books: Found description (${bookDescription.length} chars)`);
+        }
+      }
+    } catch (error) {
+      console.error("Google Books API failed:", error);
+    }
+
+    // Priority 2: Fallback to Open Library
+    if (!bookDescription && book.open_library_id) {
       try {
         console.log(`Fetching content from Open Library: ${book.open_library_id}`);
         
@@ -62,13 +94,62 @@ serve(async (req) => {
           // Get subjects/themes
           bookSubjects = olData.subjects || [];
           
-          console.log(`Fetched description length: ${bookDescription.length} chars`);
+          bookDescription = olData.description.value;
+          contentSource = "open_library";
+          console.log(`✓ Open Library: Found description (${bookDescription.length} chars)`);
           console.log(`Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
         }
       } catch (error) {
         console.error("Failed to fetch from Open Library:", error);
       }
     }
+
+    // Priority 3: Check for user-submitted content
+    if (!bookDescription) {
+      const { data: userContent } = await supabase
+        .from("book_content")
+        .select("description, subjects")
+        .eq("book_id", bookId)
+        .eq("approved", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (userContent) {
+        bookDescription = userContent.description;
+        bookSubjects = userContent.subjects || [];
+        contentSource = "user_submitted";
+        console.log(`✓ User Content: Found description (${bookDescription.length} chars)`);
+      }
+    }
+
+    // Priority 4: Try Wikipedia
+    if (!bookDescription) {
+      try {
+        const wikiQuery = `${book.title} ${book.author || ''} children's book`;
+        console.log(`Searching Wikipedia for: ${wikiQuery}`);
+        
+        const wikiResponse = await fetch(
+          `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro=true&explaintext=true&titles=${encodeURIComponent(wikiQuery)}&origin=*`
+        );
+        
+        if (wikiResponse.ok) {
+          const wikiData = await wikiResponse.json();
+          const pages = wikiData.query?.pages;
+          const firstPage = pages ? Object.values(pages)[0] as any : null;
+          
+          if (firstPage?.extract && firstPage.pageid !== -1) {
+            bookDescription = firstPage.extract;
+            contentSource = "wikipedia";
+            console.log(`✓ Wikipedia: Found description (${bookDescription.length} chars)`);
+          }
+        }
+      } catch (error) {
+        console.error("Wikipedia API failed:", error);
+      }
+    }
+
+    console.log(`Content source: ${contentSource}`);
 
     if (!bookDescription) {
       console.warn(`No description found for book: ${book.title}. Returning error.`);
@@ -142,18 +223,22 @@ CRITICAL REQUIREMENTS:
 - Base questions ONLY on provided book content - NEVER guess or hallucinate details
 - Each question must be fun and encouraging
 - Question text: maximum 20 words, simple language
-- Provide exactly 3 options per question
+- Provide exactly 4 options per question:
+  * 3 specific answers based on book content
+  * 1 "None of the above" option (should be correct only when all 3 other answers are intentionally wrong)
 - Each option: maximum 10 words
 - Mark the correct answer clearly
 - Make questions varied: mix character questions, plot questions, and detail questions
 - Keep tone positive and supportive
+- For most questions, one of the first 3 options should be correct
+- Use "None of the above" as the correct answer sparingly (maybe 1-2 questions out of ${numQuestions})
 
 Return ONLY valid JSON in this exact format:
 {
   "questions": [
     {
       "text": "Question text here?",
-      "options": ["Option 1", "Option 2", "Option 3"],
+      "options": ["Option 1", "Option 2", "Option 3", "None of the above"],
       "correct_index": 0
     }
   ]
@@ -206,10 +291,27 @@ Return ONLY valid JSON in this exact format:
 
     // Validate each question
     for (const q of questions) {
-      if (!q.text || !Array.isArray(q.options) || q.options.length !== 3) {
+      if (!q.text || !Array.isArray(q.options)) {
         throw new Error("Invalid question format");
       }
-      if (typeof q.correct_index !== "number" || q.correct_index < 0 || q.correct_index > 2) {
+      
+      // Ensure 4 options with "None of the above"
+      if (q.options.length !== 4) {
+        console.warn(`Question has ${q.options.length} options, expected 4. Fixing...`);
+        if (q.options.length === 3) {
+          q.options.push("None of the above");
+        } else {
+          throw new Error(`Invalid number of options: ${q.options.length}`);
+        }
+      }
+      
+      // Ensure last option is "None of the above"
+      if (q.options[3] !== "None of the above") {
+        console.warn(`Question missing "None of the above" option, adding it`);
+        q.options[3] = "None of the above";
+      }
+      
+      if (typeof q.correct_index !== "number" || q.correct_index < 0 || q.correct_index > 3) {
         throw new Error("Invalid correct_index");
       }
     }
@@ -228,6 +330,7 @@ Return ONLY valid JSON in this exact format:
       num_questions: numQuestions,
       questions_json: questions,
       source: "ai_generated_with_content",
+      content_source: contentSource,
     });
 
     if (insertError) {
