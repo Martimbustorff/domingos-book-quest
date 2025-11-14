@@ -10,7 +10,7 @@ const BookDetail = () => {
   const { bookId } = useParams();
   const navigate = useNavigate();
   const [selectedQuestions, setSelectedQuestions] = useState(10);
-  const [selectedDifficulty, setSelectedDifficulty] = useState("medium");
+  const [selectedDifficulty, setSelectedDifficulty] = useState("");
 
   // Fetch book details
   const { data: book } = useQuery({
