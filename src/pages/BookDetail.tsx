@@ -68,26 +68,25 @@ const BookDetail = () => {
         </Button>
 
         {/* Book Display */}
-        <Card className="p-6 space-y-6">
-          <div className="flex gap-6 items-start">
-            {book.cover_url ? (
-              <img
-                src={book.cover_url}
-                alt={book.title}
-                className="w-24 h-32 object-cover rounded-lg shadow-md"
-              />
-            ) : (
-              <div className="w-24 h-32 bg-secondary rounded-lg flex items-center justify-center">
-                <Book className="h-12 w-12 text-secondary-foreground" />
-              </div>
+        <Card className="p-6 space-y-6 flex flex-col items-center text-center">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold">{book.title}</h1>
+            {book.author && (
+              <p className="text-lg text-muted-foreground">by {book.author}</p>
             )}
-            <div className="flex-1 space-y-2">
-              <h1 className="text-2xl font-bold">{book.title}</h1>
-              {book.author && (
-                <p className="text-lg text-muted-foreground">by {book.author}</p>
-              )}
-            </div>
           </div>
+
+          {book.cover_url ? (
+            <img
+              src={book.cover_url}
+              alt={book.title}
+              className="w-32 h-44 object-cover rounded-lg shadow-md"
+            />
+          ) : (
+            <div className="w-32 h-44 bg-secondary rounded-lg flex items-center justify-center">
+              <Book className="h-16 w-16 text-secondary-foreground" />
+            </div>
+          )}
 
           <div className="space-y-3">
             <p className="text-lg font-medium">Nice choice! 🌟</p>
