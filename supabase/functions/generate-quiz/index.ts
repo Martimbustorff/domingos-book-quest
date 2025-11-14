@@ -66,25 +66,56 @@ serve(async (req) => {
       console.log(`[1/5] Searching Google Books for: ${searchQuery}`);
       
       const gbResponse = await fetchWithTimeout(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=3`,
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=5`,
         10000
       );
       
       if (gbResponse.ok) {
         const gbData = await gbResponse.json();
+        console.log(`Google Books returned ${gbData.items?.length || 0} results`);
         
-        // Find the best match with longest description
+        // Validate title/author match before accepting description
         for (const item of gbData.items || []) {
           const volumeInfo = item.volumeInfo;
-          if (volumeInfo.description && volumeInfo.description.length > bookDescription.length) {
-            bookDescription = volumeInfo.description;
-            bookSubjects = volumeInfo.categories || [];
-            contentSource = "google_books";
+          
+          // Calculate title similarity (case-insensitive, normalize spaces)
+          const normalizedBookTitle = book.title.toLowerCase().trim();
+          const normalizedItemTitle = (volumeInfo.title || '').toLowerCase().trim();
+          const titleMatch = normalizedItemTitle.includes(normalizedBookTitle) || 
+                             normalizedBookTitle.includes(normalizedItemTitle);
+          
+          // Validate author if available
+          let authorMatch = true;
+          if (book.author && volumeInfo.authors) {
+            const normalizedBookAuthor = book.author.toLowerCase();
+            authorMatch = volumeInfo.authors.some((a: string) => 
+              a.toLowerCase().includes(normalizedBookAuthor) ||
+              normalizedBookAuthor.includes(a.toLowerCase())
+            );
+          }
+          
+          console.log(`  Checking: "${volumeInfo.title}" by ${volumeInfo.authors?.join(', ') || 'unknown'}`);
+          console.log(`    Title match: ${titleMatch}, Author match: ${authorMatch}, Has description: ${!!volumeInfo.description}`);
+          
+          // Only accept if title matches AND (no author OR author matches)
+          if (titleMatch && authorMatch && volumeInfo.description) {
+            console.log(`  ✓ Accepted match`);
+            
+            // Pick the longest description among valid matches
+            if (volumeInfo.description.length > bookDescription.length) {
+              bookDescription = volumeInfo.description;
+              bookSubjects = volumeInfo.categories || [];
+              contentSource = "google_books";
+            }
+          } else {
+            console.log(`  ✗ Rejected - not a valid match`);
           }
         }
         
         if (bookDescription) {
           console.log(`✓ Google Books: Found description (${bookDescription.length} chars)`);
+        } else {
+          console.log(`✗ Google Books: No valid matches found`);
         }
       }
     } catch (error) {
@@ -94,17 +125,28 @@ serve(async (req) => {
     // Priority 2: Fallback to Open Library
     if (!bookDescription && book.open_library_id) {
       try {
-        console.log(`[2/5] Fetching content from Open Library: ${book.open_library_id}`);
+        console.log(`[2/5] Fetching from Open Library: ${book.open_library_id}`);
         
-        const olResponse = await fetchWithTimeout(
+        // Try /works/ endpoint first
+        let olResponse = await fetchWithTimeout(
           `https://openlibrary.org${book.open_library_id}.json`,
           10000
         );
         
+        // If /works/ fails, try /books/ endpoint
+        if (!olResponse.ok && book.open_library_id.includes('/works/')) {
+          const bookEndpoint = book.open_library_id.replace('/works/', '/books/');
+          console.log(`  Trying alternative endpoint: ${bookEndpoint}`);
+          olResponse = await fetchWithTimeout(
+            `https://openlibrary.org${bookEndpoint}.json`,
+            10000
+          );
+        }
+        
         if (olResponse.ok) {
           const olData = await olResponse.json();
           
-          // Extract description (can be string or object)
+          // Extract description (handle string or object format)
           if (typeof olData.description === 'string') {
             bookDescription = olData.description;
           } else if (olData.description?.value) {
@@ -112,7 +154,7 @@ serve(async (req) => {
           }
           
           // Get first sentence as additional context
-          if (olData.first_sentence?.value) {
+          if (olData.first_sentence?.value && bookDescription) {
             bookDescription = `${olData.first_sentence.value}\n\n${bookDescription}`;
           }
           
@@ -122,11 +164,15 @@ serve(async (req) => {
           if (bookDescription) {
             contentSource = "open_library";
             console.log(`✓ Open Library: Found description (${bookDescription.length} chars)`);
-            console.log(`Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
+            console.log(`  Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
+          } else {
+            console.log(`✗ Open Library: No description found`);
           }
+        } else {
+          console.log(`✗ Open Library: Request failed with status ${olResponse.status}`);
         }
       } catch (error) {
-        console.error("Failed to fetch from Open Library:", error);
+        console.error("Open Library API failed:", error);
       }
     }
 
@@ -227,7 +273,32 @@ CRITICAL: If you cannot find reliable information about this specific book, resp
     console.log(`=== Content Fetching Complete ===`);
     console.log(`Source used: ${contentSource}`);
     console.log(`Description length: ${bookDescription ? bookDescription.length : 0} chars`);
-    console.log(`Subjects found: ${bookSubjects.length}`);
+    console.log(`Subjects found: ${bookSubjects.length}\n`);
+
+    // Validate that description actually matches the book
+    if (bookDescription) {
+      const descLower = bookDescription.toLowerCase();
+      const titleWords = book.title.toLowerCase().split(' ').filter((w: string) => w.length > 3);
+      
+      // Check if at least 40% of significant title words appear in description
+      const matchCount = titleWords.filter((word: string) => descLower.includes(word)).length;
+      const matchRatio = titleWords.length > 0 ? matchCount / titleWords.length : 0;
+      
+      console.log(`Content validation: ${matchCount}/${titleWords.length} title words found (${(matchRatio * 100).toFixed(0)}%)`);
+      
+      if (matchRatio < 0.4) {
+        console.warn(`⚠️ WARNING: Description may not match book!`);
+        console.warn(`  Expected title words: ${titleWords.join(', ')}`);
+        console.warn(`  Description preview: ${bookDescription.substring(0, 200)}...`);
+        console.warn(`  Treating as insufficient data`);
+        
+        // Treat this as insufficient data
+        bookDescription = "";
+        contentSource = "none";
+      } else {
+        console.log(`✓ Content validation passed`);
+      }
+    }
 
     if (!bookDescription) {
       console.warn(`No description found for book: ${book.title} after trying all sources.`);

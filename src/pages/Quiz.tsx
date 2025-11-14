@@ -81,6 +81,39 @@ const Quiz = () => {
   const questions: Question[] = quizData?.questions || [];
   const currentQ = questions[currentQuestion];
 
+  // Fetch book data for validation
+  const { data: book } = useQuery({
+    queryKey: ["book", bookId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("books")
+        .select("*")
+        .eq("id", bookId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Validate quiz content matches book title on first render
+  useEffect(() => {
+    if (questions.length > 0 && book && currentQuestion === 0) {
+      const titleWords = book.title.toLowerCase().split(' ').filter((w: string) => w.length > 3);
+      const firstQuestion = questions[0]?.text.toLowerCase() || '';
+      
+      // Check if at least one significant title word appears in first question
+      const titleInQuestion = titleWords.some((word: string) => 
+        firstQuestion.includes(word)
+      );
+
+      if (!titleInQuestion && titleWords.length > 0) {
+        console.warn("Quiz content validation failed - may not match book");
+        toast.error("Quiz content may not match this book. Please try regenerating.");
+      }
+    }
+  }, [questions, book, currentQuestion]);
+
   const handleAnswerSelect = (index: number) => {
     if (showFeedback) return;
     setSelectedAnswer(index);
