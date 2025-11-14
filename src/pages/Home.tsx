@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Star, TrendingUp } from "lucide-react";
+import { BookOpen, Star, TrendingUp, Users } from "lucide-react";
 import mascotBulldog from "@/assets/mascot-bulldog.png";
 import AuthButton from "@/components/AuthButton";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,12 +9,28 @@ import { useEffect, useState } from "react";
 const Home = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsAuthenticated(!!user);
-    });
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setIsAuthenticated(!!user);
+    
+    if (user) {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      
+      const hasParentOrTeacher = roles?.some(r => r.role === "parent" || r.role === "teacher");
+      if (hasParentOrTeacher) {
+        setUserRole(roles?.find(r => r.role === "parent" || r.role === "teacher")?.role || null);
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
@@ -44,15 +60,29 @@ const Home = () => {
         {/* Main Actions */}
         <div className="space-y-4 sm:space-y-6 pt-6 sm:pt-8 px-2">
           {isAuthenticated && (
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
-              onClick={() => navigate("/dashboard")}
-            >
-              <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
-              📊 My Dashboard
-            </Button>
+            <>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
+                onClick={() => navigate("/dashboard")}
+              >
+                <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+                📊 My Dashboard
+              </Button>
+              
+              {userRole && (userRole === "parent" || userRole === "teacher") && (
+                <Button
+                  size="lg"
+                  variant="gradient"
+                  className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
+                  onClick={() => navigate("/parent-dashboard")}
+                >
+                  <Users className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+                  👨‍👩‍👧‍👦 {userRole === "parent" ? "Parent" : "Teacher"} Dashboard
+                </Button>
+              )}
+            </>
           )}
           
           <Button
