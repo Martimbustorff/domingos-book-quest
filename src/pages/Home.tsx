@@ -107,7 +107,7 @@ const Home = () => {
 
         {/* Footer */}
         <div className="pt-8 sm:pt-12 text-xs sm:text-sm text-muted-foreground font-medium">
-          <p>Free • No login required • Safe for kids</p>
+          <p>Free • Safe for kids • Track your progress</p>
         </div>
       </div>
     </div>
