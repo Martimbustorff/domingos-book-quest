@@ -465,6 +465,28 @@ Return ONLY valid JSON in this exact format:
       }
     }
 
+    // Shuffle answer options for each question (Fisher-Yates algorithm)
+    for (const q of questions) {
+      // Create array of indices to track original positions
+      const indices = q.options.map((_: string, i: number) => i);
+      
+      // Fisher-Yates shuffle algorithm
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      
+      // Reorder options based on shuffled indices
+      const shuffledOptions = indices.map((i: number) => q.options[i]);
+      
+      // Find new position of correct answer
+      const newCorrectIndex = indices.indexOf(q.correct_index);
+      
+      // Update question with shuffled data
+      q.options = shuffledOptions;
+      q.correct_index = newCorrectIndex;
+    }
+
     // Validate questions against book content
     console.log("Generated questions based on book content:");
     for (const q of questions) {
