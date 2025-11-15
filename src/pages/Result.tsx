@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,17 +7,81 @@ import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { updateUserStats } from "@/lib/achievements";
 import { toast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { QuizResult, UserStats } from "@/types";
 
 const Result = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const score = parseInt(searchParams.get("score") || "0");
   const total = parseInt(searchParams.get("total") || "10");
   const bookId = searchParams.get("bookId");
+  const difficulty = searchParams.get("difficulty") || "medium";
 
   const percentage = Math.round((score / total) * 100);
   const [points, setPoints] = useState(0);
-  const [saving, setSaving] = useState(true);
+
+  // Optimistic mutation for saving results
+  const saveResultsMutation = useMutation({
+    mutationFn: async ({ userId, bookId, score, total, difficulty, earnedPoints }: {
+      userId: string;
+      bookId: string;
+      score: number;
+      total: number;
+      difficulty: string;
+      earnedPoints: number;
+    }) => {
+      await updateUserStats(userId, bookId, score, total, difficulty, earnedPoints);
+      return { earnedPoints };
+    },
+    onMutate: async ({ earnedPoints }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["user-stats"] });
+      await queryClient.cancelQueries({ queryKey: ["dashboard"] });
+
+      // Snapshot previous values
+      const previousStats = queryClient.getQueryData<UserStats>(["user-stats"]);
+
+      // Optimistically update stats
+      if (previousStats) {
+        queryClient.setQueryData<UserStats>(["user-stats"], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            total_points: old.total_points + earnedPoints,
+            quizzes_completed: old.quizzes_completed + 1,
+          };
+        });
+      }
+
+      return { previousStats };
+    },
+    onError: (error: any, variables, context) => {
+      // Rollback on error
+      if (context?.previousStats) {
+        queryClient.setQueryData(["user-stats"], context.previousStats);
+      }
+      
+      console.error("Error saving results:", error);
+      toast({
+        title: "Couldn't save your progress",
+        description: "But don't worry, your points are still counted!",
+        variant: "destructive",
+      });
+
+      // Fallback to localStorage
+      const currentPoints = parseInt(localStorage.getItem("totalPoints") || "0");
+      localStorage.setItem("totalPoints", (currentPoints + variables.earnedPoints).toString());
+    },
+    onSuccess: () => {
+      // Invalidate and refetch relevant queries
+      queryClient.invalidateQueries({ queryKey: ["user-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["parent-dashboard-children"] });
+    },
+  });
 
   useEffect(() => {
     const saveResults = async () => {
@@ -35,35 +99,21 @@ const Result = () => {
       setPoints(earnedPoints);
 
       // Save to database if user is authenticated
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user && bookId) {
-          await updateUserStats(
-            user.id,
-            bookId,
-            score,
-            total,
-            "medium", // You can pass difficulty from URL params if needed
-            earnedPoints
-          );
-        } else {
-          // Fallback to localStorage for non-authenticated users
-          const currentPoints = parseInt(localStorage.getItem("totalPoints") || "0");
-          localStorage.setItem("totalPoints", (currentPoints + earnedPoints).toString());
-        }
-      } catch (error: any) {
-        console.error("Error saving results:", error);
-        toast({
-          title: "Couldn't save your progress",
-          description: "But don't worry, your points are still counted!",
-          variant: "destructive",
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && bookId) {
+        saveResultsMutation.mutate({
+          userId: user.id,
+          bookId,
+          score,
+          total,
+          difficulty,
+          earnedPoints,
         });
-        // Fallback to localStorage
+      } else {
+        // Fallback to localStorage for non-authenticated users
         const currentPoints = parseInt(localStorage.getItem("totalPoints") || "0");
         localStorage.setItem("totalPoints", (currentPoints + earnedPoints).toString());
-      } finally {
-        setSaving(false);
       }
     };
 

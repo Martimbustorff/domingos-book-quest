@@ -717,6 +717,20 @@ export type Database = {
       }
     }
     Views: {
+      parent_dashboard_summary: {
+        Row: {
+          books_read: number | null
+          current_streak: number | null
+          display_name: string | null
+          guardian_id: string | null
+          last_quiz_date: string | null
+          longest_streak: number | null
+          quizzes_completed: number | null
+          student_id: string | null
+          total_points: number | null
+        }
+        Relationships: []
+      }
       popular_books_dynamic: {
         Row: {
           age_max: number | null

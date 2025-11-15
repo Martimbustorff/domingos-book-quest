@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Book } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { BookListSkeleton } from "@/components/shared";
+import { PopularBook } from "@/types";
 
 const Popular = () => {
   const navigate = useNavigate();
@@ -61,25 +63,11 @@ const Popular = () => {
         </p>
 
         {/* Books List */}
-        {isLoading && (
-          <div className="space-y-4 sm:space-y-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Card key={i} className="p-5 sm:p-6 animate-pulse">
-                <div className="flex gap-4 sm:gap-6">
-                  <div className="w-14 h-16 sm:w-16 sm:h-20 bg-muted rounded-[12px]" />
-                  <div className="flex-1 space-y-2 sm:space-y-3">
-                    <div className="h-4 sm:h-5 bg-muted rounded-[12px] w-3/4" />
-                    <div className="h-3 sm:h-4 bg-muted rounded-[12px] w-1/2" />
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+        {isLoading && <BookListSkeleton count={5} />}
 
         {popularBooks && popularBooks.length > 0 && (
           <div className="space-y-4 sm:space-y-6">
-            {popularBooks.map((book: any, index: number) => {
+            {popularBooks.map((book: PopularBook, index: number) => {
               return (
                 <Card
                   key={book.book_id}

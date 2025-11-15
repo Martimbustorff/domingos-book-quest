@@ -7,28 +7,17 @@ import { Users, Plus, ArrowLeft } from "lucide-react";
 import ChildCard from "@/components/ChildCard";
 import InvitationManager from "@/components/InvitationManager";
 import { toast } from "@/hooks/use-toast";
-
-interface ChildData {
-  id: string;
-  display_name: string;
-  user_id: string;
-  total_points: number;
-  quizzes_completed: number;
-  current_streak: number;
-  last_quiz_date: string | null;
-  relationship_type: string;
-}
+import { LoadingState } from "@/components/shared";
+import { ChildData } from "@/types";
+import { useQuery } from "@tanstack/react-query";
 
 const ParentDashboard = () => {
   const navigate = useNavigate();
-  const [children, setChildren] = useState<ChildData[]>([]);
-  const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>("");
   const [showInvitations, setShowInvitations] = useState(false);
 
   useEffect(() => {
     checkAccess();
-    fetchChildren();
   }, []);
 
   const checkAccess = async () => {
@@ -57,55 +46,42 @@ const ParentDashboard = () => {
     setUserRole(roles?.find(r => r.role === "parent" || r.role === "teacher")?.role || "");
   };
 
-  const fetchChildren = async () => {
-    try {
+  const { data: children = [], isLoading, refetch } = useQuery({
+    queryKey: ["parent-dashboard-children"],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new Error("Not authenticated");
 
-      const { data: relationships, error } = await supabase
-        .from("guardian_relationships")
-        .select(`
-          id,
-          student_id,
-          relationship_type,
-          status,
-          profiles!guardian_relationships_student_id_fkey(display_name, user_id),
-          user_stats!guardian_relationships_student_id_fkey(total_points, quizzes_completed, current_streak, last_quiz_date)
-        `)
-        .eq("guardian_id", user.id)
-        .eq("status", "approved");
+      const { data, error } = await supabase
+        .from("parent_dashboard_summary")
+        .select("*")
+        .eq("guardian_id", user.id);
 
       if (error) throw error;
 
-      const childrenData: ChildData[] = relationships?.map((rel: any) => ({
-        id: rel.id,
-        user_id: rel.student_id,
-        display_name: rel.profiles?.display_name || "Student",
-        total_points: rel.user_stats?.total_points || 0,
-        quizzes_completed: rel.user_stats?.quizzes_completed || 0,
-        current_streak: rel.user_stats?.current_streak || 0,
-        last_quiz_date: rel.user_stats?.last_quiz_date || null,
-        relationship_type: rel.relationship_type,
-      })) || [];
-
-      setChildren(childrenData);
-    } catch (error: any) {
-      console.error("Error fetching children:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load student data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data?.map((item: any) => ({
+        id: item.student_id,
+        user_id: item.student_id,
+        display_name: item.display_name || "Student",
+        total_points: item.total_points,
+        quizzes_completed: item.quizzes_completed,
+        current_streak: item.current_streak,
+        last_quiz_date: item.last_quiz_date,
+        relationship_type: "student",
+      })) as ChildData[] || [];
+    },
+    enabled: !!userRole,
+  });
 
   const totalPoints = children.reduce((sum, child) => sum + child.total_points, 0);
   const totalQuizzes = children.reduce((sum, child) => sum + child.quizzes_completed, 0);
   const avgStreak = children.length > 0 
     ? Math.round(children.reduce((sum, child) => sum + child.current_streak, 0) / children.length)
     : 0;
+
+  if (isLoading) {
+    return <LoadingState fullScreen message="Loading dashboard..." />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 sm:p-6">
@@ -138,7 +114,7 @@ const ParentDashboard = () => {
           <InvitationManager
             relationshipType={userRole}
             onClose={() => setShowInvitations(false)}
-            onInvitationCreated={fetchChildren}
+            onInvitationCreated={() => refetch()}
           />
         )}
 
@@ -198,7 +174,7 @@ const ParentDashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading...
               </div>

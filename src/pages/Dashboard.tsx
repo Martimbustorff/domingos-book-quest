@@ -6,14 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Trophy, Star, Book, Flame, TrendingUp, Award, ArrowLeft } from "lucide-react";
-
-interface UserStats {
-  total_points: number;
-  quizzes_completed: number;
-  books_read: number;
-  current_streak: number;
-  longest_streak: number;
-}
+import { LoadingState } from "@/components/shared";
+import { UserStats } from "@/types";
 
 interface Achievement {
   id: string;
@@ -142,14 +136,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState fullScreen message="Loading your dashboard..." />;
   }
 
   const earnedAchievements = achievements.filter(a => a.earned_at);
