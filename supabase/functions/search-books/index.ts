@@ -6,12 +6,63 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limiting: 30 requests per minute per IP
+async function checkRateLimit(supabase: any, ipAddress: string, endpoint: string): Promise<boolean> {
+  const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+  
+  const { data, error } = await supabase
+    .from('request_logs')
+    .select('id')
+    .eq('ip_address', ipAddress)
+    .eq('endpoint', endpoint)
+    .gte('created_at', oneMinuteAgo);
+
+  if (error) {
+    console.error('Rate limit check error:', error);
+    return true; // Allow on error to avoid blocking legitimate users
+  }
+
+  return (data?.length || 0) < 30;
+}
+
+async function logRequest(supabase: any, ipAddress: string, endpoint: string) {
+  await supabase.from('request_logs').insert({
+    ip_address: ipAddress,
+    endpoint: endpoint
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get client IP address
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0] || 
+                      req.headers.get('x-real-ip') || 
+                      'unknown';
+
+    // Check rate limit
+    const isAllowed = await checkRateLimit(supabase, ipAddress, 'search-books');
+    if (!isAllowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Log request
+    await logRequest(supabase, ipAddress, 'search-books');
+
     const { query } = await req.json();
 
     if (!query || query.length < 2) {
@@ -21,11 +72,6 @@ serve(async (req) => {
     }
 
     console.log("Searching for books with query:", query);
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // First, search local database
     const { data: localBooks, error: localError } = await supabase

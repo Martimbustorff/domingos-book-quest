@@ -398,6 +398,27 @@ export type Database = {
           },
         ]
       }
+      request_logs: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          ip_address: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          ip_address: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          ip_address?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -714,6 +735,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_old_request_logs: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -726,6 +748,8 @@ export type Database = {
         Returns: undefined
       }
       is_guardian_of: { Args: { _student_id: string }; Returns: boolean }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "student" | "parent" | "teacher" | "admin"

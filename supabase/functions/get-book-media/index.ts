@@ -6,20 +6,66 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limiting: 20 requests per minute per IP
+async function checkRateLimit(supabase: any, ipAddress: string, endpoint: string): Promise<boolean> {
+  const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+  
+  const { data, error } = await supabase
+    .from('request_logs')
+    .select('id')
+    .eq('ip_address', ipAddress)
+    .eq('endpoint', endpoint)
+    .gte('created_at', oneMinuteAgo);
+
+  if (error) {
+    console.error('Rate limit check error:', error);
+    return true;
+  }
+
+  return (data?.length || 0) < 20;
+}
+
+async function logRequest(supabase: any, ipAddress: string, endpoint: string) {
+  await supabase.from('request_logs').insert({
+    ip_address: ipAddress,
+    endpoint: endpoint
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { bookId } = await req.json();
-
-    console.log("Checking media for book:", bookId);
-
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get client IP address
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0] || 
+                      req.headers.get('x-real-ip') || 
+                      'unknown';
+
+    // Check rate limit
+    const isAllowed = await checkRateLimit(supabase, ipAddress, 'get-book-media');
+    if (!isAllowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Log request
+    await logRequest(supabase, ipAddress, 'get-book-media');
+
+    const { bookId } = await req.json();
+
+    console.log("Checking media for book:", bookId);
 
     // Get book details
     const { data: book, error: bookError } = await supabase
