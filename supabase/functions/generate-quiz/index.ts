@@ -74,21 +74,34 @@ serve(async (req) => {
         const gbData = await gbResponse.json();
         console.log(`Google Books returned ${gbData.items?.length || 0} results`);
         
-        // Validate title/author match before accepting description
+        let bestMatch = null;
+        let bestMatchScore = -1;
+        
+        // Score each result to find the best match
         for (const item of gbData.items || []) {
           const volumeInfo = item.volumeInfo;
+          
+          if (!volumeInfo.description) continue;
           
           // Calculate title similarity (case-insensitive, normalize spaces)
           const normalizedBookTitle = book.title.toLowerCase().trim();
           const normalizedItemTitle = (volumeInfo.title || '').toLowerCase().trim();
-          const titleMatch = normalizedItemTitle.includes(normalizedBookTitle) || 
+          
+          // Check for exact title match (highest priority)
+          const exactTitleMatch = normalizedItemTitle === normalizedBookTitle;
+          const titleMatch = exactTitleMatch || 
+                             normalizedItemTitle.includes(normalizedBookTitle) || 
                              normalizedBookTitle.includes(normalizedItemTitle);
           
           // Validate author if available
           let authorMatch = true;
+          let exactAuthorMatch = false;
           if (book.author && volumeInfo.authors) {
-            const normalizedBookAuthor = book.author.toLowerCase();
-            authorMatch = volumeInfo.authors.some((a: string) => 
+            const normalizedBookAuthor = book.author.toLowerCase().trim();
+            exactAuthorMatch = volumeInfo.authors.some((a: string) => 
+              a.toLowerCase().trim() === normalizedBookAuthor
+            );
+            authorMatch = exactAuthorMatch || volumeInfo.authors.some((a: string) => 
               a.toLowerCase().includes(normalizedBookAuthor) ||
               normalizedBookAuthor.includes(a.toLowerCase())
             );
@@ -97,19 +110,61 @@ serve(async (req) => {
           console.log(`  Checking: "${volumeInfo.title}" by ${volumeInfo.authors?.join(', ') || 'unknown'}`);
           console.log(`    Title match: ${titleMatch}, Author match: ${authorMatch}, Has description: ${!!volumeInfo.description}`);
           
-          // Only accept if title matches AND (no author OR author matches)
-          if (titleMatch && authorMatch && volumeInfo.description) {
-            console.log(`  ✓ Accepted match`);
+          // Only consider if title matches AND (no author OR author matches)
+          if (titleMatch && authorMatch) {
+            // Calculate match quality score (0-100)
+            let score = 0;
             
-            // Pick the longest description among valid matches
-            if (volumeInfo.description.length > bookDescription.length) {
-              bookDescription = volumeInfo.description;
-              bookSubjects = volumeInfo.categories || [];
-              contentSource = "google_books";
+            // Exact title + exact author = perfect match (stop searching)
+            if (exactTitleMatch && exactAuthorMatch) {
+              score = 100;
+            }
+            // Exact title + partial/no author
+            else if (exactTitleMatch) {
+              score = 80;
+            }
+            // Partial title + exact author
+            else if (exactAuthorMatch) {
+              score = 70;
+            }
+            // Both partial matches
+            else {
+              score = 50;
+            }
+            
+            // Prefer shorter titles (more specific) as tiebreaker
+            const titleLengthPenalty = Math.min(10, normalizedItemTitle.length - normalizedBookTitle.length);
+            score -= titleLengthPenalty * 0.1;
+            
+            console.log(`    Match score: ${score.toFixed(1)}`);
+            
+            if (score > bestMatchScore) {
+              bestMatchScore = score;
+              bestMatch = {
+                description: volumeInfo.description,
+                subjects: volumeInfo.categories || [],
+                score: score
+              };
+              console.log(`  ✓ New best match (score: ${score.toFixed(1)})`);
+              
+              // Stop immediately if we found a perfect match
+              if (score >= 100) {
+                console.log(`  🎯 Perfect match found - stopping search`);
+                break;
+              }
+            } else {
+              console.log(`  ✗ Not better than current best (${bestMatchScore.toFixed(1)})`);
             }
           } else {
             console.log(`  ✗ Rejected - not a valid match`);
           }
+        }
+        
+        // Use the best match found
+        if (bestMatch) {
+          bookDescription = bestMatch.description;
+          bookSubjects = bestMatch.subjects;
+          contentSource = "google_books";
         }
         
         if (bookDescription) {
