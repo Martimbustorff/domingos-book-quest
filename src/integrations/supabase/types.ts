@@ -101,13 +101,6 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "book_content_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
-          },
         ]
       }
       books: {
@@ -185,13 +178,6 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "events_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
-          },
         ]
       }
       guardian_relationships: {
@@ -260,13 +246,6 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "popular_books_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
-          },
         ]
       }
       profiles: {
@@ -332,13 +311,6 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "quiz_history_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
-          },
         ]
       }
       quiz_templates: {
@@ -388,13 +360,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "books"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_templates_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
           },
         ]
       }
@@ -496,13 +461,6 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_books_merged_to_book_id_fkey"
-            columns: ["merged_to_book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
-          },
         ]
       }
       user_contributions: {
@@ -591,13 +549,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "books"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_quiz_questions_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
           },
         ]
       }
@@ -706,13 +657,6 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "youtube_videos_book_id_fkey"
-            columns: ["book_id"]
-            isOneToOne: false
-            referencedRelation: "popular_books_dynamic"
-            referencedColumns: ["book_id"]
-          },
         ]
       }
     }
@@ -750,6 +694,22 @@ export type Database = {
     }
     Functions: {
       cleanup_old_request_logs: { Args: never; Returns: undefined }
+      get_popular_books_dynamic: {
+        Args: never
+        Returns: {
+          age_max: number
+          age_min: number
+          author: string
+          avg_score: number
+          book_id: string
+          cover_url: string
+          last_quiz_at: string
+          quiz_count: number
+          ranking: number
+          title: string
+          unique_users: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
