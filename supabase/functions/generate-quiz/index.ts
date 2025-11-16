@@ -436,41 +436,96 @@ CRITICAL: If you cannot find reliable information about this specific book, resp
     }
 
     const difficultyInstructions: Record<string, string> = {
-      easy: "Use very simple vocabulary suitable for ages 5-6. Focus on basic characters, colors, and obvious events. Keep questions under 15 words.",
-      medium: "Use clear vocabulary for ages 7-8. Include 'why' questions and slightly more detail about plot and characters.",
-      hard: "Use more advanced vocabulary for ages 9-10. Include deeper understanding questions about motivations, themes, and sequence of events.",
+      easy: "Ages 5-6: Focus on main characters by name, obvious story events, and clear emotions. Ask 'Who did what?' and 'What happened?' Use simple words, keep questions 10-15 words.",
+      medium: "Ages 7-8: Include 'why' questions about character motivations, story sequence, and problem-solving. Test understanding of cause and effect in the story. Use 15-20 words per question.",
+      hard: "Ages 9-10: Ask deeper questions about story themes, character development, the story's message, and how events connect. Include inference questions about the narrative. Use 18-20 words per question.",
     };
 
-    const systemPrompt = `You are a friendly reading helper for children. Generate exactly ${numQuestions} multiple-choice quiz questions about the book "${book.title}" by ${book.author || "Unknown Author"}.
+    const systemPrompt = `You are an expert reading comprehension test creator for children's books. Your ONLY job is to test if a child understood the STORY they read - the narrative, characters, plot, settings, emotions, and themes.
+
+EDUCATIONAL GOAL: Create questions that verify the child read and understood the story's content, NOT the physical book features.
+
+ABSOLUTELY FORBIDDEN - NEVER ask about:
+❌ Physical book features (pop-ups, flaps, stickers, lift-the-flap, touch-and-feel, interactive elements)
+❌ Things you can touch, lift, pull, feel, or physically interact with in the book
+❌ Book format (hardcover, paperback, number of pages)
+❌ Awards, reviews, or ratings
+❌ Other books by the same author
+❌ Meta-questions about the book itself
+❌ Generic vocabulary not specific to this story
+
+REQUIRED QUESTION TYPES - All questions MUST be about the STORY:
+
+✅ WHO questions (about characters):
+   - "Who is the main character in the story?"
+   - "Who helped [character] when [event happened]?"
+   - "Who wanted to [action]?"
+
+✅ WHAT questions (about story events):
+   - "What happened when [character] did [action]?"
+   - "What did [character] want in the story?"
+   - "What problem did [character] face?"
+
+✅ WHERE questions (about story settings):
+   - "Where did the story take place?"
+   - "Where did [character] go when [event]?"
+
+✅ WHEN questions (about story sequence):
+   - "What happened FIRST in the story?"
+   - "What did [character] do AFTER [event]?"
+   - "What happened at the END of the story?"
+
+✅ WHY questions (about motivations and cause):
+   - "Why did [character] feel [emotion]?"
+   - "Why did [event] happen?"
+
+✅ HOW questions (about emotions and story mechanics):
+   - "How did [character] feel when [event]?"
+   - "How did [character] solve their problem?"
+
+✅ THEME questions (about lessons and messages):
+   - "What did [character] learn in the story?"
+   - "What is the message of the story?"
+
+EXAMPLES OF GOOD QUESTIONS (story-based):
+✓ "Who was afraid to jump into the water?" (character emotion)
+✓ "What did the penguin do to be brave?" (plot action)
+✓ "Where did the animals have their contest?" (setting)
+✓ "What happened after the character jumped in?" (sequence)
+✓ "How did the character feel at the end?" (emotion)
+✓ "What did the character learn about being brave?" (theme)
+
+EXAMPLES OF BAD QUESTIONS (forbidden):
+✗ "What kind of surprise is in the book?" (physical feature)
+✗ "What can you lift in the book?" (interactive element)
+✗ "How many flaps are in the book?" (book format)
+✗ "What kind of texture is on page 5?" (touch-and-feel)
+✗ "What other books has the author written?" (meta-question)
+
+BOOK CONTENT FOR "${book.title}" (YOUR ONLY SOURCE):
+${bookDescription}
+
+${bookSubjects.length > 0 ? `STORY THEMES: ${bookSubjects.slice(0, 10).join(', ')}` : ''}
+
+CRITICAL INSTRUCTIONS:
+1. Use ONLY the story content above for "${book.title}"
+2. If the description mentions other books ("From the creators of..."), IGNORE that completely
+3. If you cannot extract actual story details (characters, plot, events), return an error
+4. NEVER invent characters, events, or details not in the story
+5. Every question must be answerable by a child who read and understood this story
 
 ${difficultyInstructions[difficulty] || difficultyInstructions.medium}
 
-BOOK CONTENT (USE THIS AS YOUR ONLY SOURCE):
-${bookDescription}
-
-${bookSubjects.length > 0 ? `THEMES: ${bookSubjects.slice(0, 10).join(', ')}` : ''}
-
-CRITICAL RULES:
-1. Base ALL questions ONLY on the book "${book.title}" - NOT on any other books mentioned
-2. If the content mentions other books by the same author, IGNORE those references completely
-3. Only create questions about characters, events, and themes from "${book.title}" itself
-4. DO NOT create questions about reviews, awards, or other books
-5. If you cannot create ${numQuestions} questions from this specific book's content, say so
-
-CRITICAL REQUIREMENTS:
+TECHNICAL REQUIREMENTS:
 - Generate EXACTLY ${numQuestions} questions
-- Base questions ONLY on provided book content - NEVER guess or hallucinate details
-- Each question must be fun and encouraging
-- Question text: maximum 20 words, simple language
-- Provide exactly 4 options per question:
-  * 3 specific answers based on book content
-  * 1 "None of the above" option (should be correct only when all 3 other answers are intentionally wrong)
+- Question text: maximum 20 words, child-friendly language
+- Each question must have exactly 4 options:
+  * 3 specific answers based on story content
+  * 1 "None of the above" option
 - Each option: maximum 10 words
-- Mark the correct answer clearly
-- Make questions varied: mix character questions, plot questions, and detail questions
+- Make "None of the above" correct in only 1-2 questions maximum
+- Mix question types: characters, plot events, sequence, emotions, themes, settings
 - Keep tone positive and supportive
-- For most questions, one of the first 3 options should be correct
-- Use "None of the above" as the correct answer sparingly (maybe 1-2 questions out of ${numQuestions})
 
 Return ONLY valid JSON in this exact format:
 {
@@ -574,6 +629,29 @@ Return ONLY valid JSON in this exact format:
       invalidQuestions.forEach((q: any) => console.error(`  - ${q.text}`));
       
       throw new Error(`Quiz generation included questions about wrong books. Please try again.`);
+    }
+
+    // Validate questions are story-based, not about physical book features
+    const physicalBookPatterns = [
+      /\b(pop-?up|lift|flap|pull|tab|wheel|slider|sticker|touch|feel|texture)\b/i,
+      /what (can you|do you) (lift|pull|touch|feel|see|find) (in|on) the book/i,
+      /what kind of (surprise|feature|element) (is|are) in the book/i,
+      /how many (pages|flaps|pop-?ups)/i,
+      /what (is|are) (in|on|under) the (flap|tab|page)/i,
+      /interactive/i,
+    ];
+
+    const physicalBookQuestions = questions.filter((q: any) => {
+      const questionText = q.text.toLowerCase();
+      const allText = questionText + ' ' + q.options.join(' ').toLowerCase();
+      return physicalBookPatterns.some(pattern => pattern.test(allText));
+    });
+
+    if (physicalBookQuestions.length > 0) {
+      console.error(`Found ${physicalBookQuestions.length} questions about physical book features (NOT story content):`);
+      physicalBookQuestions.forEach((q: any) => console.error(`  - ${q.text}`));
+      
+      throw new Error(`Quiz included forbidden questions about physical book features instead of story content. All questions must be about the narrative, characters, plot, and themes. Please regenerate.`);
     }
 
     // Shuffle answer options for each question (Fisher-Yates algorithm)
