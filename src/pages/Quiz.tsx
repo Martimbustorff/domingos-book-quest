@@ -273,8 +273,8 @@ const Quiz = () => {
                   showCorrect
                     ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-2 border-green-500 animate-pop-in"
                     : showWrong
-                    ? "bg-muted/50 border-2 border-border"
-                    : "hover:border-primary/50 active:scale-[0.98]"
+                    ? "bg-muted/50 border-2 border-muted-foreground/20"
+                    : "border-transparent hover:border-primary/30 active:scale-[0.98]"
                 }`}
                 onClick={() => handleAnswerSelect(index)}
               >
