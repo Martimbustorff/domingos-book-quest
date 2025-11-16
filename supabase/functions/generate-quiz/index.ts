@@ -608,26 +608,10 @@ Return ONLY valid JSON in this exact format:
       }
     }
 
-    // Validate generated questions don't reference wrong books
-    const invalidQuestions = questions.filter((q: any) => {
-      const questionText = q.text.toLowerCase();
-      const allText = questionText + ' ' + q.options.join(' ').toLowerCase();
-      
-      // Check for mentions of other books (add more patterns as needed)
-      const forbiddenPatterns = [
-        /giraffe(?!.*penguin)/i,  // "giraffe" without "penguin" nearby
-        /dance(?!.*penguin)/i,     // "dance" without "penguin" nearby
-      ];
-      
-      return forbiddenPatterns.some(pattern => pattern.test(allText));
-    });
-
-    if (invalidQuestions.length > 0) {
-      console.error(`Found ${invalidQuestions.length} questions about wrong books:`);
-      invalidQuestions.forEach((q: any) => console.error(`  - ${q.text}`));
-      
-      throw new Error(`Quiz generation included questions about wrong books. Please try again.`);
-    }
+    // Validate questions against book content
+    // Note: Removed overly aggressive "wrong book" validation since we now prioritize
+    // user-curated content first, which prevents wrong book contamination at the source.
+    // The validation was incorrectly flagging valid questions like "What animal is Elmer?"
 
     // Validate questions are story-based, not about physical book features
     const physicalBookPatterns = [
