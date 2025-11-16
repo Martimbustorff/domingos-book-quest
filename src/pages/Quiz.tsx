@@ -253,7 +253,7 @@ const Quiz = () => {
         </Card>
 
         {/* Options */}
-        <div className="space-y-4">
+        <div className="space-y-4" key={`question-${currentQuestion}`}>
           {currentQ.options.map((option, index) => {
             const isSelected = selectedAnswer === index;
             const isCorrect = index === currentQ.correct_index;
