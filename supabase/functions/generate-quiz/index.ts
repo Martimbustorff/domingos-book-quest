@@ -83,124 +83,112 @@ serve(async (req) => {
     let bookSubjects: string[] = [];
     let contentSource = "none";
 
-    // Priority 1: Try Google Books API
-    try {
-      const searchQuery = `${book.title}${book.author ? ` ${book.author}` : ''}`;
-      console.log(`[1/5] Searching Google Books for: ${searchQuery}`);
+    // Priority 1: Check for user-submitted content FIRST
+    console.log(`[1/5] Checking user-submitted content...`);
+    const { data: userContent } = await supabase
+      .from("book_content")
+      .select("description, subjects")
+      .eq("book_id", bookId)
+      .eq("approved", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
       
-      const gbResponse = await fetchWithTimeout(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=5`,
-        10000
-      );
-      
-      if (gbResponse.ok) {
-        const gbData = await gbResponse.json();
-        console.log(`Google Books returned ${gbData.items?.length || 0} results`);
+    if (userContent?.description) {
+      bookDescription = userContent.description;
+      bookSubjects = userContent.subjects || [];
+      contentSource = "user_curated";
+      console.log(`✓ User-Curated Content: Found description (${bookDescription.length} chars)`);
+      console.log(`  Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
+      console.log(`⚡ Using curated content - skipping external APIs`);
+    }
+
+    // Priority 2: Try Google Books API (only if no user content)
+    if (!bookDescription) {
+      try {
+        const searchQuery = `${book.title}${book.author ? ` ${book.author}` : ''}`;
+        console.log(`[2/5] Searching Google Books for: ${searchQuery}`);
         
-        let bestMatch = null;
-        let bestMatchScore = -1;
+        const gbResponse = await fetchWithTimeout(
+          `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=5`,
+          10000
+        );
         
-        // Score each result to find the best match
-        for (const item of gbData.items || []) {
-          const volumeInfo = item.volumeInfo;
+        if (gbResponse.ok) {
+          const gbData = await gbResponse.json();
+          console.log(`Google Books returned ${gbData.items?.length || 0} results`);
           
-          if (!volumeInfo.description) continue;
+          let bestMatch = null;
+          let bestMatchScore = -1;
           
-          // Calculate title similarity (case-insensitive, normalize spaces)
-          const normalizedBookTitle = book.title.toLowerCase().trim();
-          const normalizedItemTitle = (volumeInfo.title || '').toLowerCase().trim();
-          
-          // Check for exact title match (highest priority)
-          const exactTitleMatch = normalizedItemTitle === normalizedBookTitle;
-          const titleMatch = exactTitleMatch || 
-                             normalizedItemTitle.includes(normalizedBookTitle) || 
-                             normalizedBookTitle.includes(normalizedItemTitle);
-          
-          // Validate author if available
-          let authorMatch = true;
-          let exactAuthorMatch = false;
-          if (book.author && volumeInfo.authors) {
-            const normalizedBookAuthor = book.author.toLowerCase().trim();
-            exactAuthorMatch = volumeInfo.authors.some((a: string) => 
-              a.toLowerCase().trim() === normalizedBookAuthor
-            );
-            authorMatch = exactAuthorMatch || volumeInfo.authors.some((a: string) => 
-              a.toLowerCase().includes(normalizedBookAuthor) ||
-              normalizedBookAuthor.includes(a.toLowerCase())
-            );
-          }
-          
-          console.log(`  Checking: "${volumeInfo.title}" by ${volumeInfo.authors?.join(', ') || 'unknown'}`);
-          console.log(`    Title match: ${titleMatch}, Author match: ${authorMatch}, Has description: ${!!volumeInfo.description}`);
-          
-          // Only consider if title matches AND (no author OR author matches)
-          if (titleMatch && authorMatch) {
-            // Calculate match quality score (0-100)
+          // Score each result to find the best match
+          for (const item of gbData.items || []) {
+            const volumeInfo = item.volumeInfo;
+            
+            if (!volumeInfo.description) continue;
+            
+            // Calculate title similarity (case-insensitive, normalize spaces)
+            const normalizedBookTitle = book.title.toLowerCase().trim();
+            const normalizedGbTitle = volumeInfo.title?.toLowerCase().trim() || "";
+            
+            // Check if titles match closely
+            const titleMatch = 
+              normalizedGbTitle.includes(normalizedBookTitle) || 
+              normalizedBookTitle.includes(normalizedGbTitle) ||
+              normalizedGbTitle.replace(/[^a-z0-9]/g, '') === normalizedBookTitle.replace(/[^a-z0-9]/g, '');
+            
+            // Calculate author similarity if we have author info
+            let authorMatch = false;
+            if (book.author && volumeInfo.authors) {
+              const normalizedBookAuthor = book.author.toLowerCase().trim();
+              const gbAuthors = volumeInfo.authors.map((a: string) => a.toLowerCase().trim());
+              authorMatch = gbAuthors.some((a: string) => 
+                a.includes(normalizedBookAuthor) || 
+                normalizedBookAuthor.includes(a) ||
+                a.replace(/[^a-z]/g, '') === normalizedBookAuthor.replace(/[^a-z]/g, '')
+              );
+            }
+            
+            // Has description
+            const hasDescription = !!volumeInfo.description;
+            
+            console.log(`  Checking: "${volumeInfo.title}" by ${volumeInfo.authors?.join(', ') || 'unknown'}`);
+            console.log(`    Title match: ${titleMatch}, Author match: ${authorMatch}, Has description: ${hasDescription}`);
+            
+            // Calculate match score
             let score = 0;
+            if (titleMatch) score += 50;
+            if (authorMatch) score += 20;
+            if (hasDescription) score += 10;
+            if (titleMatch && authorMatch) score += 20; // Bonus for both matching
             
-            // Exact title + exact author = perfect match (stop searching)
-            if (exactTitleMatch && exactAuthorMatch) {
-              score = 100;
-            }
-            // Exact title + partial/no author
-            else if (exactTitleMatch) {
-              score = 80;
-            }
-            // Partial title + exact author
-            else if (exactAuthorMatch) {
-              score = 70;
-            }
-            // Both partial matches
-            else {
-              score = 50;
-            }
-            
-            // Prefer shorter titles (more specific) as tiebreaker
-            const titleLengthPenalty = Math.min(10, normalizedItemTitle.length - normalizedBookTitle.length);
-            score -= titleLengthPenalty * 0.1;
-            
-            console.log(`    Match score: ${score.toFixed(1)}`);
+            console.log(`    Match score: ${score}`);
             
             if (score > bestMatchScore) {
               bestMatchScore = score;
-              bestMatch = {
-                description: volumeInfo.description,
-                subjects: volumeInfo.categories || [],
-                score: score
-              };
-              console.log(`  ✓ New best match (score: ${score.toFixed(1)})`);
-              
-              // Stop immediately if we found a perfect match
-              if (score >= 100) {
-                console.log(`  🎯 Perfect match found - stopping search`);
-                break;
-              }
-            } else {
-              console.log(`  ✗ Not better than current best (${bestMatchScore.toFixed(1)})`);
+              bestMatch = volumeInfo;
+              console.log(`  ✓ New best match (score: ${score})`);
+            } else if (score > 0) {
+              console.log(`  ✗ Not better than current best (${bestMatchScore})`);
             }
+          }
+          
+          if (bestMatch && bestMatchScore >= 50) {
+            bookDescription = bestMatch.description;
+            bookSubjects = bestMatch.categories || [];
+            contentSource = "google_books";
+            console.log(`✓ Google Books: Found description (${bookDescription.length} chars)`);
+            console.log(`Subjects found: ${bookSubjects.length}\n`);
           } else {
-            console.log(`  ✗ Rejected - not a valid match`);
+            console.log(`✗ Google Books: No confident match found (best score: ${bestMatchScore})`);
           }
         }
-        
-        // Use the best match found
-        if (bestMatch) {
-          bookDescription = bestMatch.description;
-          bookSubjects = bestMatch.subjects;
-          contentSource = "google_books";
-        }
-        
-        if (bookDescription) {
-          console.log(`✓ Google Books: Found description (${bookDescription.length} chars)`);
-        } else {
-          console.log(`✗ Google Books: No valid matches found`);
-        }
+      } catch (error) {
+        console.error("Google Books API failed:", error);
       }
-    } catch (error) {
-      console.error("Google Books API failed:", error);
     }
 
-    // Priority 2: Fallback to Open Library
+    // Priority 3: Fallback to Open Library
     if (!bookDescription && book.open_library_id) {
       try {
         console.log(`[2/5] Fetching from Open Library: ${book.open_library_id}`);
@@ -254,27 +242,9 @@ serve(async (req) => {
       }
     }
 
-    // Priority 3: Check for user-submitted content
-    if (!bookDescription) {
-      console.log(`[3/5] Checking user-submitted content...`);
-      const { data: userContent } = await supabase
-        .from("book_content")
-        .select("description, subjects")
-        .eq("book_id", bookId)
-        .eq("approved", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-        
-      if (userContent) {
-        bookDescription = userContent.description;
-        bookSubjects = userContent.subjects || [];
-        contentSource = "user_submitted";
-        console.log(`✓ User Content: Found description (${bookDescription.length} chars)`);
-      }
-    }
+    // Priority 4: Skip duplicate user content check (already done as Priority 1)
 
-    // Priority 4: Try Wikipedia
+    // Priority 5: Try Wikipedia
     if (!bookDescription) {
       try {
         const wikiQuery = `${book.title} ${book.author || ''} children's book`;
@@ -436,8 +406,8 @@ CRITICAL: If you cannot find reliable information about this specific book, resp
     }
 
     const difficultyInstructions: Record<string, string> = {
-      easy: "Ages 5-6: Focus on main characters by name, obvious story events, and clear emotions. Ask 'Who did what?' and 'What happened?' Use simple words, keep questions 10-15 words.",
-      medium: "Ages 7-8: Include 'why' questions about character motivations, story sequence, and problem-solving. Test understanding of cause and effect in the story. Use 15-20 words per question.",
+      easy: "Ages 5-6: Prioritize concrete WHO/WHAT questions: character names/types (What animal?), colors (What color?), simple actions (What did they do?), and obvious story events. Include visual descriptions for picture books. Keep questions 8-12 words, use simple vocabulary.",
+      medium: "Ages 7-8: Mix concrete facts (characters, colors, visual details, actions) with simple WHY questions about clear motivations. Ask 'What happened when...?' and 'Why did [character] feel...?' Test both visual memory AND story sequence. Use 12-18 words per question.",
       hard: "Ages 9-10: Ask deeper questions about story themes, character development, the story's message, and how events connect. Include inference questions about the narrative. Use 18-20 words per question.",
     };
 
@@ -453,18 +423,31 @@ ABSOLUTELY FORBIDDEN - NEVER ask about:
 ❌ Other books by the same author
 ❌ Meta-questions about the book itself
 ❌ Generic vocabulary not specific to this story
+❌ Abstract concepts like "phenomenon", "demonstration", "perception" (use concrete story language instead)
 
-REQUIRED QUESTION TYPES - All questions MUST be about the STORY:
+PRIORITIZE THESE QUESTION TYPES (especially for picture books):
 
-✅ WHO questions (about characters):
-   - "Who is the main character in the story?"
-   - "Who helped [character] when [event happened]?"
-   - "Who wanted to [action]?"
+✅ VISUAL/COLOR questions (for books with visual elements):
+   - "What color(s) is [character]?"
+   - "What pattern does [character] have on their body?"
+   - "What does [character] look like?"
+   - "What did [character] wear?"
+   - "What colors did [character] see/use?"
 
-✅ WHAT questions (about story events):
-   - "What happened when [character] did [action]?"
-   - "What did [character] want in the story?"
-   - "What problem did [character] face?"
+✅ CONCRETE CHARACTER questions:
+   - "What animal/creature is [character]?"
+   - "What is the main character's name?"
+   - "Who did [specific action] in the story?"
+
+✅ SPECIFIC STORY ACTION questions:
+   - "What did [character] do when [specific event]?"
+   - "What did [character] say/shout in the story?"
+   - "What happened to [character] at the end?"
+
+✅ STORY EVENT questions:
+   - "What celebration happens in the story?"
+   - "What special day do the characters celebrate?"
+   - "What did [character] roll in/jump in/hide in?"
 
 ✅ WHERE questions (about story settings):
    - "Where did the story take place?"
@@ -475,19 +458,21 @@ REQUIRED QUESTION TYPES - All questions MUST be about the STORY:
    - "What did [character] do AFTER [event]?"
    - "What happened at the END of the story?"
 
-✅ WHY questions (about motivations and cause):
+✅ WHY questions (about clear motivations):
    - "Why did [character] feel [emotion]?"
-   - "Why did [event] happen?"
+   - "Why did [character] want to [action]?"
 
-✅ HOW questions (about emotions and story mechanics):
+✅ HOW questions (about emotions):
    - "How did [character] feel when [event]?"
-   - "How did [character] solve their problem?"
+   - "How did the other characters react?"
 
-✅ THEME questions (about lessons and messages):
-   - "What did [character] learn in the story?"
-   - "What is the message of the story?"
-
-EXAMPLES OF GOOD QUESTIONS (story-based):
+EXAMPLES OF EXCELLENT CONCRETE QUESTIONS:
+✓ "What animal is Elmer?" (character type)
+✓ "What colors are on Elmer's body?" (visual description)
+✓ "What did Elmer roll in to change his color?" (specific action)
+✓ "What did Elmer shout in the rain?" (concrete dialogue)
+✓ "What day do elephants celebrate every year?" (story event)
+✓ "Why did Elmer want to look grey?" (clear motivation)
 ✓ "Who was afraid to jump into the water?" (character emotion)
 ✓ "What did the penguin do to be brave?" (plot action)
 ✓ "Where did the animals have their contest?" (setting)
@@ -495,12 +480,25 @@ EXAMPLES OF GOOD QUESTIONS (story-based):
 ✓ "How did the character feel at the end?" (emotion)
 ✓ "What did the character learn about being brave?" (theme)
 
-EXAMPLES OF BAD QUESTIONS (forbidden):
-✗ "What kind of surprise is in the book?" (physical feature)
-✗ "What can you lift in the book?" (interactive element)
-✗ "How many flaps are in the book?" (book format)
-✗ "What kind of texture is on page 5?" (touch-and-feel)
-✗ "What other books has the author written?" (meta-question)
+EXAMPLES OF BAD QUESTIONS TO AVOID:
+❌ ABSTRACT/META questions:
+✗ "What phenomenon did [character] want to explain?" (too abstract)
+✗ "How did [character's] demonstration compare to...?" (too meta)
+✗ "What helps perception change?" (too philosophical)
+✗ "What was more original?" (too subjective)
+✗ "What type of phenomenon...?" (use concrete story language)
+
+❌ PHYSICAL BOOK questions:
+✗ "What can you lift on this page?" (physical interaction)
+✗ "What texture does the fur feel like?" (physical sensation)
+✗ "How many pages are in the book?" (book format)
+✗ "What award did this book win?" (meta information)
+✗ "What does 'brave' mean?" (generic vocabulary, not story-specific)
+
+INSTEAD OF ABSTRACT, ASK CONCRETE:
+✗ "What phenomenon did Elmer demonstrate?" → ✓ "What did Elmer do in the rain?"
+✗ "How did perception change?" → ✓ "How did the water feel to Elmer's trunk?"
+✗ "What was more original?" → ✓ "What funny thing did Elmer do?"
 
 BOOK CONTENT FOR "${book.title}" (YOUR ONLY SOURCE):
 ${bookDescription}
@@ -703,11 +701,14 @@ Return ONLY valid JSON in this exact format:
 
     // Validate questions against book content
     console.log("Generated questions based on book content:");
+    console.log(`Content source used: ${contentSource}`);
     for (const q of questions) {
       console.log(`Q: ${q.text} | Correct: ${q.options[q.correct_index]}`);
     }
+    console.log(`Successfully generated ${questions.length} questions\n`);
 
     // Save quiz template to database
+    console.log(`Saving quiz template with source: ${contentSource}`);
     const { error: insertError } = await supabase.from("quiz_templates").insert({
       book_id: bookId,
       age_band: ageBand,
