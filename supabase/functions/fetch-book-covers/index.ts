@@ -32,6 +32,61 @@ async function logRequest(supabase: any, ipAddress: string, endpoint: string) {
   });
 }
 
+async function processBookCovers(supabaseClient: any, books: any[]) {
+  const results = [];
+  
+  for (const book of books) {
+    try {
+      console.log(`Fetching cover for: ${book.title} by ${book.author}`);
+      
+      // Search Open Library
+      const searchUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author || '')}`;
+      const searchResponse = await fetch(searchUrl);
+      const searchData = await searchResponse.json();
+
+      if (searchData.docs && searchData.docs.length > 0) {
+        const firstResult = searchData.docs[0];
+        
+        if (firstResult.cover_i) {
+          const coverUrl = `https://covers.openlibrary.org/b/id/${firstResult.cover_i}-L.jpg`;
+          
+          const { error: updateError } = await supabaseClient
+            .from('books')
+            .update({ cover_url: coverUrl })
+            .eq('id', book.id);
+
+          if (updateError) {
+            console.error(`Error updating book ${book.id}:`, updateError);
+            results.push({ book: book.title, success: false, error: updateError.message });
+          } else {
+            console.log(`✓ Updated cover for: ${book.title}`);
+            results.push({ book: book.title, success: true, coverUrl });
+          }
+        } else {
+          console.log(`No cover found for: ${book.title}`);
+          results.push({ book: book.title, success: false, error: 'No cover available' });
+        }
+      } else {
+        console.log(`No results found for: ${book.title}`);
+        results.push({ book: book.title, success: false, error: 'Book not found in Open Library' });
+      }
+    } catch (error) {
+      console.error(`Error processing ${book.title}:`, error);
+      results.push({
+        book: book.title,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  
+  const successCount = results.filter(r => r.success).length;
+  console.log(`✅ Cover fetch complete: ${successCount}/${results.length} books updated`);
+  return results;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -43,12 +98,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get client IP address
     const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0] || 
                       req.headers.get('x-real-ip') || 
                       'unknown';
 
-    // Check rate limit
     const isAllowed = await checkRateLimit(supabaseClient, ipAddress, 'fetch-book-covers');
     if (!isAllowed) {
       return new Response(
@@ -60,10 +113,8 @@ serve(async (req) => {
       );
     }
 
-    // Log request
     await logRequest(supabaseClient, ipAddress, 'fetch-book-covers');
 
-    // Get all books without covers
     const { data: booksWithoutCovers, error: fetchError } = await supabaseClient
       .from('books')
       .select('id, title, author')
@@ -74,87 +125,25 @@ serve(async (req) => {
       throw fetchError;
     }
 
-    console.log(`Found ${booksWithoutCovers?.length || 0} books without covers`);
+    const bookCount = booksWithoutCovers?.length || 0;
+    console.log(`📚 Starting background fetch for ${bookCount} books without covers`);
 
-    const results = [];
-
-    // Fetch covers for each book
-    for (const book of booksWithoutCovers || []) {
-      try {
-        console.log(`Fetching cover for: ${book.title} by ${book.author}`);
-        
-        // Search Open Library
-        const searchUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.author || '')}`;
-        const searchResponse = await fetch(searchUrl);
-        const searchData = await searchResponse.json();
-
-        if (searchData.docs && searchData.docs.length > 0) {
-          const firstResult = searchData.docs[0];
-          
-          if (firstResult.cover_i) {
-            // Construct cover URL
-            const coverUrl = `https://covers.openlibrary.org/b/id/${firstResult.cover_i}-L.jpg`;
-            
-            // Update book with cover URL
-            const { error: updateError } = await supabaseClient
-              .from('books')
-              .update({ cover_url: coverUrl })
-              .eq('id', book.id);
-
-            if (updateError) {
-              console.error(`Error updating book ${book.id}:`, updateError);
-              results.push({
-                book: book.title,
-                success: false,
-                error: updateError.message
-              });
-            } else {
-              console.log(`✓ Updated cover for: ${book.title}`);
-              results.push({
-                book: book.title,
-                success: true,
-                coverUrl
-              });
-            }
-          } else {
-            console.log(`No cover found for: ${book.title}`);
-            results.push({
-              book: book.title,
-              success: false,
-              error: 'No cover available'
-            });
-          }
-        } else {
-          console.log(`No results found for: ${book.title}`);
-          results.push({
-            book: book.title,
-            success: false,
-            error: 'Book not found in Open Library'
-          });
-        }
-      } catch (error) {
-        console.error(`Error processing ${book.title}:`, error);
-        results.push({
-          book: book.title,
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 200));
+    // Process in background
+    if (booksWithoutCovers && booksWithoutCovers.length > 0) {
+      // @ts-ignore - EdgeRuntime is available in Deno Deploy
+      EdgeRuntime.waitUntil(processBookCovers(supabaseClient, booksWithoutCovers));
     }
 
-    const successCount = results.filter(r => r.success).length;
-    
+    // Return immediately
     return new Response(
       JSON.stringify({
-        message: `Processed ${results.length} books, ${successCount} covers updated`,
-        results
+        message: `Started fetching covers for ${bookCount} books. Check logs for progress.`,
+        bookCount,
+        status: 'processing'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 202 
       }
     );
 
