@@ -613,29 +613,6 @@ Return ONLY valid JSON in this exact format:
     // user-curated content first, which prevents wrong book contamination at the source.
     // The validation was incorrectly flagging valid questions like "What animal is Elmer?"
 
-    // Validate questions are story-based, not about physical book features
-    const physicalBookPatterns = [
-      /\b(pop-?up|lift|flap|pull|tab|wheel|slider|sticker|touch|feel|texture)\b/i,
-      /what (can you|do you) (lift|pull|touch|feel|see|find) (in|on) the book/i,
-      /what kind of (surprise|feature|element) (is|are) in the book/i,
-      /how many (pages|flaps|pop-?ups)/i,
-      /what (is|are) (in|on|under) the (flap|tab|page)/i,
-      /interactive/i,
-    ];
-
-    const physicalBookQuestions = questions.filter((q: any) => {
-      const questionText = q.text.toLowerCase();
-      const allText = questionText + ' ' + q.options.join(' ').toLowerCase();
-      return physicalBookPatterns.some(pattern => pattern.test(allText));
-    });
-
-    if (physicalBookQuestions.length > 0) {
-      console.error(`Found ${physicalBookQuestions.length} questions about physical book features (NOT story content):`);
-      physicalBookQuestions.forEach((q: any) => console.error(`  - ${q.text}`));
-      
-      throw new Error(`Quiz included forbidden questions about physical book features instead of story content. All questions must be about the narrative, characters, plot, and themes. Please regenerate.`);
-    }
-
     // Shuffle answer options for each question (Fisher-Yates algorithm)
     // BUT keep "None of the above" always at the end
     for (const q of questions) {
