@@ -20,6 +20,9 @@ import {
   Download,
   BarChart3,
   PieChart as PieChartIcon,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -48,6 +51,8 @@ const AdminPanel = () => {
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const [roleDistribution, setRoleDistribution] = useState<any[]>([]);
   const [popularBooks, setPopularBooks] = useState<any[]>([]);
+  const [quizTemplates, setQuizTemplates] = useState<any[]>([]);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -55,6 +60,7 @@ const AdminPanel = () => {
     fetchAllUsers();
     fetchRoleDistribution();
     fetchPopularBooks();
+    fetchQuizTemplates();
   }, []);
 
   const checkAdminAccess = async () => {
@@ -140,6 +146,59 @@ const AdminPanel = () => {
       .slice(0, 10);
 
     setPopularBooks(topBooks);
+  };
+
+  const fetchQuizTemplates = async () => {
+    const { data } = await supabase
+      .from("quiz_templates")
+      .select(`
+        *,
+        books (
+          title,
+          author
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    setQuizTemplates(data || []);
+  };
+
+  const regenerateQuiz = async (bookId: string, difficulty: string) => {
+    setRegenerating(bookId);
+    try {
+      // Delete existing quiz template
+      await supabase
+        .from("quiz_templates")
+        .delete()
+        .eq("book_id", bookId)
+        .eq("difficulty", difficulty);
+
+      toast.success("Quiz template deleted. Next quiz generation will create a new one.");
+      
+      // Refresh the list
+      await fetchQuizTemplates();
+    } catch (error: any) {
+      toast.error("Failed to regenerate quiz: " + error.message);
+    } finally {
+      setRegenerating(null);
+    }
+  };
+
+  const bulkRegenerateBySource = async (contentSource: string) => {
+    try {
+      const { error } = await supabase
+        .from("quiz_templates")
+        .delete()
+        .eq("content_source", contentSource);
+
+      if (error) throw error;
+
+      toast.success(`Deleted all quiz templates using ${contentSource}. They will regenerate on next use.`);
+      await fetchQuizTemplates();
+    } catch (error: any) {
+      toast.error("Failed to bulk regenerate: " + error.message);
+    }
   };
 
   const handleGrantAdmin = async () => {
@@ -321,10 +380,14 @@ const AdminPanel = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="analytics">
               <BarChart3 className="h-4 w-4 mr-2" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="quizzes">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Quiz Management
             </TabsTrigger>
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
@@ -335,6 +398,131 @@ const AdminPanel = () => {
               Reports
             </TabsTrigger>
           </TabsList>
+
+          {/* Quiz Management Tab */}
+          <TabsContent value="quizzes" className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Quiz Templates</CardTitle>
+                <CardDescription>
+                  Manage quiz templates and content sources. Regenerate quizzes to use updated content.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Bulk Actions */}
+                <div className="flex flex-wrap gap-2 p-4 bg-muted/50 rounded-lg">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => bulkRegenerateBySource("google_books")}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Regenerate Google Books Quizzes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => bulkRegenerateBySource("open_library")}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Regenerate Open Library Quizzes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchQuizTemplates}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh List
+                  </Button>
+                </div>
+
+                {/* Quiz Templates Table */}
+                <div className="max-h-[600px] overflow-y-auto rounded-md border">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead>Book</TableHead>
+                        <TableHead>Difficulty</TableHead>
+                        <TableHead>Questions</TableHead>
+                        <TableHead>Content Source</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quizTemplates.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            No quiz templates found. Quizzes will be generated on demand.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        quizTemplates.map((template: any) => (
+                          <TableRow key={template.id}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{template.books?.title}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {template.books?.author}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="capitalize">{template.difficulty}</span>
+                            </TableCell>
+                            <TableCell>{template.num_questions}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {template.content_source === "user_curated" ? (
+                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-yellow-500" />
+                                )}
+                                <span className="text-sm">
+                                  {template.content_source || template.source || "unknown"}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {new Date(template.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={regenerating === template.book_id}
+                                onClick={() => regenerateQuiz(template.book_id, template.difficulty)}
+                              >
+                                <RefreshCw
+                                  className={`h-4 w-4 mr-2 ${
+                                    regenerating === template.book_id ? "animate-spin" : ""
+                                  }`}
+                                />
+                                Regenerate
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Legend */}
+                <div className="flex gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    User-curated content (high quality)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-yellow-500" />
+                    External API content (may need regeneration)
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
