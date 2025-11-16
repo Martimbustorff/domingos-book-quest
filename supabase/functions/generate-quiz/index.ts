@@ -521,25 +521,50 @@ Return ONLY valid JSON in this exact format:
     }
 
     // Shuffle answer options for each question (Fisher-Yates algorithm)
+    // BUT keep "None of the above" always at the end
     for (const q of questions) {
-      // Create array of indices to track original positions
-      const indices = q.options.map((_: string, i: number) => i);
+      // Check if the last option is "None of the above"
+      const hasNoneOption = q.options[3] === "None of the above";
       
-      // Fisher-Yates shuffle algorithm
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
+      if (hasNoneOption) {
+        // Only shuffle the first 3 options, keep "None of the above" at index 3
+        const firstThreeOptions = q.options.slice(0, 3);
+        const indices = [0, 1, 2];
+        
+        // Fisher-Yates shuffle for first 3 indices only
+        for (let i = 2; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        
+        // Reorder first 3 options based on shuffled indices
+        const shuffledFirstThree = indices.map((i: number) => firstThreeOptions[i]);
+        
+        // Update options: shuffled first 3 + "None of the above" at the end
+        q.options = [...shuffledFirstThree, "None of the above"];
+        
+        // Update correct_index only if it's one of the first 3 options
+        if (q.correct_index < 3) {
+          q.correct_index = indices.indexOf(q.correct_index);
+        } else {
+          // If correct answer is "None of the above", it stays at index 3
+          q.correct_index = 3;
+        }
+      } else {
+        // If no "None of the above", shuffle all 4 options (existing logic)
+        const indices = q.options.map((_: string, i: number) => i);
+        
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        
+        const shuffledOptions = indices.map((i: number) => q.options[i]);
+        const newCorrectIndex = indices.indexOf(q.correct_index);
+        
+        q.options = shuffledOptions;
+        q.correct_index = newCorrectIndex;
       }
-      
-      // Reorder options based on shuffled indices
-      const shuffledOptions = indices.map((i: number) => q.options[i]);
-      
-      // Find new position of correct answer
-      const newCorrectIndex = indices.indexOf(q.correct_index);
-      
-      // Update question with shuffled data
-      q.options = shuffledOptions;
-      q.correct_index = newCorrectIndex;
     }
 
     // Validate questions against book content
