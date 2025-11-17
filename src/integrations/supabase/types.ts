@@ -694,6 +694,16 @@ export type Database = {
     }
     Functions: {
       cleanup_old_request_logs: { Args: never; Returns: undefined }
+      count_active_users_today: { Args: never; Returns: number }
+      get_average_quiz_score: { Args: never; Returns: number }
+      get_book_utilization: {
+        Args: never
+        Returns: {
+          books_with_quizzes: number
+          percentage: number
+          total_books: number
+        }[]
+      }
       get_popular_books_dynamic: {
         Args: never
         Returns: {
@@ -708,6 +718,24 @@ export type Database = {
           ranking: number
           title: string
           unique_users: number
+        }[]
+      }
+      get_user_leaderboard: {
+        Args: { limit_count?: number }
+        Returns: {
+          avg_score: number
+          display_name: string
+          last_active: string
+          quizzes_completed: number
+          total_points: number
+          user_id: string
+        }[]
+      }
+      get_weekly_active_users: {
+        Args: never
+        Returns: {
+          active_users: number
+          activity_date: string
         }[]
       }
       has_role: {

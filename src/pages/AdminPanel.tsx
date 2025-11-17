@@ -23,6 +23,11 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
+  Target,
+  Library,
+  Activity,
+  Zap,
+  Trophy,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -53,6 +58,8 @@ const AdminPanel = () => {
   const [popularBooks, setPopularBooks] = useState<any[]>([]);
   const [quizTemplates, setQuizTemplates] = useState<any[]>([]);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [weeklyActiveUsers, setWeeklyActiveUsers] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
   useEffect(() => {
     checkAdminAccess();
@@ -61,7 +68,26 @@ const AdminPanel = () => {
     fetchRoleDistribution();
     fetchPopularBooks();
     fetchQuizTemplates();
+    fetchWeeklyActiveUsers();
+    fetchLeaderboard();
   }, []);
+
+  const fetchWeeklyActiveUsers = async () => {
+    const { data, error } = await supabase.rpc('get_weekly_active_users');
+    if (!error && data) {
+      setWeeklyActiveUsers(data.map((d: any) => ({
+        date: new Date(d.activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        users: Number(d.active_users),
+      })));
+    }
+  };
+
+  const fetchLeaderboard = async () => {
+    const { data, error } = await supabase.rpc('get_user_leaderboard', { limit_count: 10 });
+    if (!error && data) {
+      setLeaderboard(data);
+    }
+  };
 
   const checkAdminAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -328,74 +354,126 @@ const AdminPanel = () => {
         </div>
 
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="glass-card">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
                 Total Users
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.totalUsers}</div>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.totalUsers}</div>
             </CardContent>
           </Card>
 
           <Card className="glass-card">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 Total Quizzes
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.totalQuizzes}</div>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.totalQuizzes}</div>
             </CardContent>
           </Card>
 
           <Card className="glass-card">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-primary" />
                 Total Books
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.totalBooks}</div>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.totalBooks}</div>
             </CardContent>
           </Card>
 
           <Card className="glass-card">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
                 Active Today
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.activeToday}</div>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.activeToday}</div>
+              <p className="text-xs text-muted-foreground mt-1">{stats.activeUsersRate}% of users</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                Avg Quiz Score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.avgQuizScore}%</div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Library className="h-4 w-4 text-primary" />
+                Book Utilization
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.booksWithQuizzes}/{stats.totalBooks}</div>
+              <p className="text-xs text-muted-foreground mt-1">{stats.bookUtilizationPercentage}% with quizzes</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary" />
+                User Engagement
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.avgQuizzesPerUser}</div>
+              <p className="text-xs text-muted-foreground mt-1">Avg quizzes per user</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-primary" />
+                Top User Points
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold">{leaderboard[0]?.total_points || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1 truncate">{leaderboard[0]?.display_name || 'N/A'}</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Main Tabs */}
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="analytics">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2">
+            <TabsTrigger value="analytics" className="flex-col sm:flex-row gap-1">
+              <BarChart3 className="h-4 w-4" />
+              <span className="text-xs sm:text-sm">Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="quizzes">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Quiz Management
+            <TabsTrigger value="quizzes" className="flex-col sm:flex-row gap-1">
+              <BookOpen className="h-4 w-4" />
+              <span className="text-xs sm:text-sm">Quizzes</span>
             </TabsTrigger>
-            <TabsTrigger value="users">
-              <Users className="h-4 w-4 mr-2" />
-              User Management
+            <TabsTrigger value="users" className="flex-col sm:flex-row gap-1">
+              <Users className="h-4 w-4" />
+              <span className="text-xs sm:text-sm">Users</span>
             </TabsTrigger>
-            <TabsTrigger value="reports">
-              <Download className="h-4 w-4 mr-2" />
-              Reports
+            <TabsTrigger value="reports" className="flex-col sm:flex-row gap-1">
+              <Download className="h-4 w-4" />
+              <span className="text-xs sm:text-sm">Reports</span>
             </TabsTrigger>
           </TabsList>
 
@@ -438,15 +516,15 @@ const AdminPanel = () => {
                 </div>
 
                 {/* Quiz Templates Table */}
-                <div className="max-h-[600px] overflow-y-auto rounded-md border">
+                <div className="max-h-[600px] overflow-y-auto overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
-                        <TableHead>Book</TableHead>
+                        <TableHead className="min-w-[200px]">Book</TableHead>
                         <TableHead>Difficulty</TableHead>
-                        <TableHead>Questions</TableHead>
-                        <TableHead>Content Source</TableHead>
-                        <TableHead>Created</TableHead>
+                        <TableHead className="hidden sm:table-cell">Questions</TableHead>
+                        <TableHead className="hidden md:table-cell">Content Source</TableHead>
+                        <TableHead className="hidden lg:table-cell">Created</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -461,30 +539,30 @@ const AdminPanel = () => {
                         quizTemplates.map((template: any) => (
                           <TableRow key={template.id}>
                             <TableCell>
-                              <div>
-                                <div className="font-medium">{template.books?.title}</div>
-                                <div className="text-xs text-muted-foreground">
+                              <div className="max-w-[200px]">
+                                <div className="font-medium truncate">{template.books?.title}</div>
+                                <div className="text-xs text-muted-foreground truncate">
                                   {template.books?.author}
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <span className="capitalize">{template.difficulty}</span>
+                              <span className="capitalize text-xs sm:text-sm">{template.difficulty}</span>
                             </TableCell>
-                            <TableCell>{template.num_questions}</TableCell>
-                            <TableCell>
+                            <TableCell className="hidden sm:table-cell">{template.num_questions}</TableCell>
+                            <TableCell className="hidden md:table-cell">
                               <div className="flex items-center gap-2">
                                 {template.content_source === "user_curated" ? (
                                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                                 ) : (
                                   <XCircle className="h-4 w-4 text-yellow-500" />
                                 )}
-                                <span className="text-sm">
+                                <span className="text-sm truncate max-w-[100px]">
                                   {template.content_source || template.source || "unknown"}
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
+                            <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                               {new Date(template.created_at).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
@@ -495,11 +573,11 @@ const AdminPanel = () => {
                                 onClick={() => regenerateQuiz(template.book_id, template.difficulty)}
                               >
                                 <RefreshCw
-                                  className={`h-4 w-4 mr-2 ${
+                                  className={`h-4 w-4 ${
                                     regenerating === template.book_id ? "animate-spin" : ""
                                   }`}
                                 />
-                                Regenerate
+                                <span className="hidden sm:inline ml-2">Regenerate</span>
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -534,7 +612,7 @@ const AdminPanel = () => {
                   <CardDescription>Quizzes completed by difficulty</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={quizActivityConfig} className="h-[300px]">
+                  <ChartContainer config={quizActivityConfig} className="h-[200px] sm:h-[300px]">
                     <BarChart data={quizActivity}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
@@ -555,7 +633,7 @@ const AdminPanel = () => {
                   <CardDescription>Breakdown of user roles</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{}} className="h-[300px]">
+                  <ChartContainer config={{}} className="h-[200px] sm:h-[300px]">
                     <PieChart>
                       <Pie
                         data={roleDistribution}
@@ -577,6 +655,57 @@ const AdminPanel = () => {
                 </CardContent>
               </Card>
 
+              {/* Weekly Active Users */}
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle>Weekly Active Users</CardTitle>
+                  <CardDescription>Unique users active each day (last 7 days)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={{}} className="h-[200px] sm:h-[300px]">
+                    <LineChart data={weeklyActiveUsers}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                      <YAxis stroke="hsl(var(--muted-foreground))" />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="users" stroke="hsl(var(--primary))" strokeWidth={2} />
+                    </LineChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* User Leaderboard */}
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle>User Leaderboard</CardTitle>
+                  <CardDescription>Top users by total points</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">Rank</TableHead>
+                          <TableHead>User</TableHead>
+                          <TableHead className="text-right">Points</TableHead>
+                          <TableHead className="text-right hidden sm:table-cell">Quizzes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {leaderboard.map((user, index) => (
+                          <TableRow key={user.user_id}>
+                            <TableCell className="font-medium">{index + 1}</TableCell>
+                            <TableCell className="max-w-[150px] truncate">{user.display_name || 'Anonymous'}</TableCell>
+                            <TableCell className="text-right font-bold">{user.total_points}</TableCell>
+                            <TableCell className="text-right hidden sm:table-cell">{user.quizzes_completed}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Popular Books */}
               <Card className="glass-card lg:col-span-2">
                 <CardHeader>
@@ -584,7 +713,7 @@ const AdminPanel = () => {
                   <CardDescription>Top 10 books by quiz count</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{}} className="h-[300px]">
+                  <ChartContainer config={{}} className="h-[200px] sm:h-[300px]">
                     <BarChart data={popularBooks} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
@@ -610,13 +739,14 @@ const AdminPanel = () => {
                 <CardDescription>Promote a user to administrator</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
                   <Input
                     placeholder="Enter user ID or email"
                     value={searchEmail}
                     onChange={(e) => setSearchEmail(e.target.value)}
+                    className="flex-1"
                   />
-                  <Button onClick={handleGrantAdmin}>
+                  <Button onClick={handleGrantAdmin} className="w-full sm:w-auto">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Grant Admin
                   </Button>
@@ -631,34 +761,36 @@ const AdminPanel = () => {
                 <CardDescription>Manage admin privileges</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User ID</TableHead>
-                      <TableHead>Display Name</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {admins.map((admin) => (
-                      <TableRow key={admin.id}>
-                        <TableCell className="font-mono text-xs">{admin.user_id}</TableCell>
-                        <TableCell>{admin.display_name || "N/A"}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={admin.user_id === currentUser?.id}
-                            onClick={() => handleRevokeAdmin(admin)}
-                          >
-                            <UserMinus className="mr-2 h-4 w-4" />
-                            Revoke
-                          </Button>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]">User ID</TableHead>
+                        <TableHead>Display Name</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {admins.map((admin) => (
+                        <TableRow key={admin.id}>
+                          <TableCell className="font-mono text-xs max-w-[200px] truncate">{admin.user_id}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{admin.display_name || "N/A"}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={admin.user_id === currentUser?.id}
+                              onClick={() => handleRevokeAdmin(admin)}
+                            >
+                              <UserMinus className="mr-2 h-4 w-4" />
+                              Revoke
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
 
@@ -669,20 +801,20 @@ const AdminPanel = () => {
                 <CardDescription>Complete user directory</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="max-h-96 overflow-y-auto">
+                <div className="max-h-96 overflow-y-auto overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Display Name</TableHead>
-                        <TableHead>User ID</TableHead>
+                        <TableHead className="min-w-[200px]">User ID</TableHead>
                         <TableHead>Roles</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {allUsers.map((user) => (
                         <TableRow key={user.id}>
-                          <TableCell>{user.display_name || "N/A"}</TableCell>
-                          <TableCell className="font-mono text-xs">{user.user_id}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{user.display_name || "N/A"}</TableCell>
+                          <TableCell className="font-mono text-xs max-w-[200px] truncate">{user.user_id}</TableCell>
                           <TableCell>
                             {user.user_roles?.map((r: any) => r.role).join(", ") || "No roles"}
                           </TableCell>
