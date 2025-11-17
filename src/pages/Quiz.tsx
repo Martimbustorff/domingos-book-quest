@@ -69,22 +69,24 @@ const Quiz = () => {
           throw error;
         }
 
-        // Track quiz start event with validation
+        // Track quiz start event with validation (only for authenticated users)
         const { data: { user } } = await supabase.auth.getUser();
         
-        try {
-          const eventData = quizEventSchema.parse({
-            event_type: "quiz_started",
-            book_id: bookId,
-            age_band: difficulty,
-            user_id: user?.id,
-          });
+        if (user?.id) {
+          try {
+            const eventData = quizEventSchema.parse({
+              event_type: "quiz_started",
+              book_id: bookId,
+              age_band: difficulty,
+              user_id: user.id,
+            });
 
-          await supabase.from("events").insert({
-            ...eventData,
-          });
-        } catch (validationError) {
-          console.error("Event validation failed:", validationError);
+            await supabase.from("events").insert({
+              ...eventData,
+            });
+          } catch (validationError) {
+            console.error("Event validation failed:", validationError);
+          }
         }
 
         return data;
@@ -172,25 +174,28 @@ const Quiz = () => {
       setSelectedAnswer(null);
       setShowFeedback(false);
     } else {
-      // Quiz complete - track event with validation, add to popular books
+      // Record completion event and increment book popularity
       try {
-        const eventData = quizEventSchema.parse({
-          event_type: "quiz_completed",
-          book_id: bookId,
-          age_band: difficulty,
-          score: score,
-          user_id: userId,
-        });
+        // Always increment book popularity
+        await supabase.rpc("increment_book_popularity", { p_book_id: bookId });
 
-        await Promise.all([
-          supabase.from("events").insert({
+        // Only track event if user is authenticated
+        if (userId) {
+          const eventData = quizEventSchema.parse({
+            event_type: "quiz_completed",
+            book_id: bookId,
+            age_band: difficulty,
+            score: score,
+            user_id: userId,
+          });
+
+          await supabase.from("events").insert({
             ...eventData,
-          }),
-          supabase.rpc("increment_book_popularity", { p_book_id: bookId })
-        ]);
-      } catch (validationError) {
-        console.error("Event validation failed:", validationError);
-        toast.error("Failed to save quiz results");
+          });
+        }
+      } catch (error) {
+        console.error("Failed to record quiz completion:", error);
+        // Don't show error to user for analytics failures
       }
 
       navigate(
@@ -259,7 +264,7 @@ const Quiz = () => {
         </Card>
 
         {/* Options */}
-        <div className="space-y-4" key={`question-${currentQuestion}`}>
+        <div className="space-y-4 w-full" key={`question-${currentQuestion}`}>
           {currentQ.options.map((option, index) => {
             const isSelected = selectedAnswer === index;
             const isCorrect = index === currentQ.correct_index;
