@@ -16,6 +16,14 @@ const Signup = () => {
   const [role, setRole] = useState<"student" | "parent" | "teacher">("student");
   const [loading, setLoading] = useState(false);
 
+  const handleRoleClick = (selectedRole: "student" | "parent" | "teacher") => {
+    if (selectedRole === "parent" || selectedRole === "teacher") {
+      toast.info("Parent & Teacher accounts are coming soon! For now, please sign up as a Student to start your reading journey.");
+      return;
+    }
+    setRole(selectedRole);
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -95,7 +103,7 @@ const Signup = () => {
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setRole("student")}
+                onClick={() => handleRoleClick("student")}
                 className={`p-4 rounded-lg border-2 transition-all ${
                   role === "student"
                     ? "border-primary bg-primary/10"
@@ -107,27 +115,21 @@ const Signup = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setRole("parent")}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  role === "parent"
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
-                }`}
+                onClick={() => handleRoleClick("parent")}
+                className="p-4 rounded-lg border-2 transition-all border-border opacity-50 cursor-not-allowed relative"
               >
                 <Users className="h-6 w-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">Parent</div>
+                <div className="text-xs text-muted-foreground mt-1">Coming Soon</div>
               </button>
               <button
                 type="button"
-                onClick={() => setRole("teacher")}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  role === "teacher"
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
-                }`}
+                onClick={() => handleRoleClick("teacher")}
+                className="p-4 rounded-lg border-2 transition-all border-border opacity-50 cursor-not-allowed relative"
               >
                 <GraduationCap className="h-6 w-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">Teacher</div>
+                <div className="text-xs text-muted-foreground mt-1">Coming Soon</div>
               </button>
             </div>
           </div>
