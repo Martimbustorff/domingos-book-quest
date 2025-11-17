@@ -12,8 +12,14 @@ const Home = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check age verification on mount
+    const ageVerified = localStorage.getItem("age_verified");
+    if (!ageVerified) {
+      navigate("/age-gate");
+      return;
+    }
     checkAuth();
-  }, []);
+  }, [navigate]);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -104,8 +110,20 @@ const Home = () => {
         </div>
 
         {/* Footer */}
-        <div className="pt-8 sm:pt-12 text-xs sm:text-sm text-muted-foreground font-medium">
-          <p>Free • Safe for kids • Track your progress</p>
+        <div className="pt-8 sm:pt-12 space-y-2">
+          <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+            Free • Safe for kids • Track your progress
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <button
+              onClick={() => navigate("/privacy")}
+              className="hover:text-foreground underline transition-colors"
+            >
+              Privacy Policy
+            </button>
+            {" • "}
+            <span>COPPA Compliant</span>
+          </p>
         </div>
       </div>
     </div>

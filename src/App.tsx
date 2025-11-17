@@ -21,6 +21,8 @@ import Settings from "./pages/Settings";
 import AdminPanel from "./pages/AdminPanel";
 import Contribute from "./pages/Contribute";
 import NotFound from "./pages/NotFound";
+import Privacy from "./pages/Privacy";
+import AgeGate from "./pages/AgeGate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -100,6 +102,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/age-gate" element={<AgeGate />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<Search />} />
           <Route path="/popular" element={<Popular />} />
