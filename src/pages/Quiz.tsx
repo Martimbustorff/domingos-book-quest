@@ -131,20 +131,25 @@ const Quiz = () => {
     },
   });
 
-  // Validate quiz content matches book title on first render
+  // Improved content validation - check multiple questions for relevance
   useEffect(() => {
     if (questions.length > 0 && book && currentQuestion === 0) {
       const titleWords = book.title.toLowerCase().split(' ').filter((w: string) => w.length > 3);
-      const firstQuestion = questions[0]?.text.toLowerCase() || '';
       
-      // Check if at least one significant title word appears in first question
-      const titleInQuestion = titleWords.some((word: string) => 
-        firstQuestion.includes(word)
+      // Check first 3 questions instead of just the first one
+      const firstThreeQuestions = questions.slice(0, 3)
+        .map(q => q.text.toLowerCase())
+        .join(' ');
+      
+      // Check if at least one significant title word appears in first 3 questions
+      const titleInQuestions = titleWords.some((word: string) => 
+        firstThreeQuestions.includes(word)
       );
 
-      if (!titleInQuestion && titleWords.length > 0) {
-        console.warn("Quiz content validation failed - may not match book");
-        toast.error("Quiz content may not match this book. Please try regenerating.");
+      // Only warn if there's really no connection AND we have enough questions to check
+      if (!titleInQuestions && titleWords.length > 0 && questions.length >= 3) {
+        console.warn("Quiz content validation: Book title not found in first questions");
+        // Don't show error toast - backend validation is more reliable
       }
     }
   }, [questions, book, currentQuestion]);
