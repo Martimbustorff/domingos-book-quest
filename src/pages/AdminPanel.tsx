@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +60,8 @@ const AdminPanel = () => {
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [weeklyActiveUsers, setWeeklyActiveUsers] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [allBooksForAdmin, setAllBooksForAdmin] = useState<any[]>([]);
+  const [bookSearch, setBookSearch] = useState("");
 
   useEffect(() => {
     checkAdminAccess();
@@ -70,6 +72,7 @@ const AdminPanel = () => {
     fetchQuizTemplates();
     fetchWeeklyActiveUsers();
     fetchLeaderboard();
+    fetchAllBooks();
   }, []);
 
   const fetchWeeklyActiveUsers = async () => {
@@ -86,6 +89,63 @@ const AdminPanel = () => {
     const { data, error } = await supabase.rpc('get_user_leaderboard', { limit_count: 10 });
     if (!error && data) {
       setLeaderboard(data);
+    }
+  };
+
+  const fetchAllBooks = async () => {
+    const { data: booksData, error: booksError } = await supabase
+      .from('books')
+      .select('*')
+      .order('title');
+    
+    if (booksError) {
+      toast.error("Failed to fetch books");
+      return;
+    }
+
+    const { data: quizCounts, error: quizError } = await supabase
+      .from('quiz_templates')
+      .select('book_id');
+    
+    if (!quizError && booksData && quizCounts) {
+      const countMap = quizCounts.reduce((acc: any, quiz: any) => {
+        acc[quiz.book_id] = (acc[quiz.book_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      const booksWithCounts = booksData.map(book => ({
+        ...book,
+        quiz_count: countMap[book.id] || 0
+      }));
+
+      setAllBooksForAdmin(booksWithCounts);
+    }
+  };
+
+  const filteredBooksForAdmin = useMemo(() => {
+    if (!bookSearch) return allBooksForAdmin;
+    
+    const query = bookSearch.toLowerCase();
+    return allBooksForAdmin.filter(book => 
+      book.title?.toLowerCase().includes(query) ||
+      book.author?.toLowerCase().includes(query)
+    );
+  }, [allBooksForAdmin, bookSearch]);
+
+  const deleteBook = async (bookId: string) => {
+    if (!confirm("Are you sure you want to delete this book? This will also delete all associated quiz templates.")) return;
+    
+    const { error } = await supabase
+      .from('books')
+      .delete()
+      .eq('id', bookId);
+    
+    if (error) {
+      toast.error("Failed to delete book: " + error.message);
+    } else {
+      toast.success("Book deleted successfully");
+      fetchAllBooks();
+      fetchPopularBooks();
     }
   };
 
@@ -458,7 +518,7 @@ const AdminPanel = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-2">
             <TabsTrigger value="analytics" className="flex-col sm:flex-row gap-1">
               <BarChart3 className="h-4 w-4" />
               <span className="text-xs sm:text-sm">Analytics</span>
@@ -474,6 +534,10 @@ const AdminPanel = () => {
             <TabsTrigger value="reports" className="flex-col sm:flex-row gap-1">
               <Download className="h-4 w-4" />
               <span className="text-xs sm:text-sm">Reports</span>
+            </TabsTrigger>
+            <TabsTrigger value="books" className="flex-col sm:flex-row gap-1">
+              <Library className="h-4 w-4" />
+              <span className="text-xs sm:text-sm">Books</span>
             </TabsTrigger>
           </TabsList>
 
@@ -856,6 +920,142 @@ const AdminPanel = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Books Management Tab */}
+          <TabsContent value="books" className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Book Management</CardTitle>
+                <CardDescription>
+                  Manage books in the library. Search, view, and remove books.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Search Books */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Input
+                    placeholder="Search books by title or author..."
+                    value={bookSearch}
+                    onChange={(e) => setBookSearch(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button onClick={fetchAllBooks} variant="outline">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+
+                {/* Book Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4">
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Total Books</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{allBooksForAdmin.length}</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">With Covers</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {allBooksForAdmin.filter(b => b.cover_url).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {allBooksForAdmin.length > 0 
+                          ? Math.round((allBooksForAdmin.filter(b => b.cover_url).length / allBooksForAdmin.length) * 100)
+                          : 0}% coverage
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">With Quizzes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {allBooksForAdmin.filter(b => b.quiz_count > 0).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {allBooksForAdmin.length > 0
+                          ? Math.round((allBooksForAdmin.filter(b => b.quiz_count > 0).length / allBooksForAdmin.length) * 100)
+                          : 0}% have quizzes
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Books Table */}
+                <div className="max-h-[600px] overflow-y-auto overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[80px]">Cover</TableHead>
+                        <TableHead className="min-w-[200px]">Title</TableHead>
+                        <TableHead className="min-w-[150px]">Author</TableHead>
+                        <TableHead className="w-[120px]">Age Range</TableHead>
+                        <TableHead className="w-[100px] text-center">Quizzes</TableHead>
+                        <TableHead className="w-[100px] text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredBooksForAdmin.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            {bookSearch ? 'No books match your search' : 'No books found'}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredBooksForAdmin.map((book) => (
+                          <TableRow key={book.id}>
+                            <TableCell>
+                              {book.cover_url ? (
+                                <img 
+                                  src={book.cover_url} 
+                                  alt={book.title} 
+                                  className="w-12 h-16 object-cover rounded shadow-sm"
+                                />
+                              ) : (
+                                <div className="w-12 h-16 bg-muted rounded flex items-center justify-center">
+                                  <BookOpen className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">{book.title}</TableCell>
+                            <TableCell className="text-muted-foreground">{book.author || 'Unknown'}</TableCell>
+                            <TableCell>
+                              {book.age_min && book.age_max 
+                                ? `${book.age_min}-${book.age_max}` 
+                                : book.age_max 
+                                ? `0-${book.age_max}`
+                                : 'Not set'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={book.quiz_count > 0 ? "font-semibold text-primary" : "text-muted-foreground"}>
+                                {book.quiz_count || 0}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => deleteBook(book.id)}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
