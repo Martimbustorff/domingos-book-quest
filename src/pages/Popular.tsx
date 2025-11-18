@@ -6,9 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BookListSkeleton } from "@/components/shared";
 import { PopularBook } from "@/types";
+import { useState, useMemo } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Popular = () => {
   const navigate = useNavigate();
+  const [ageFilter, setAgeFilter] = useState<"all" | "0-3" | "4-7" | "8-12">("all");
 
   const { data: popularBooks, isLoading } = useQuery({
     queryKey: ["popular-books"],
@@ -44,6 +47,26 @@ const Popular = () => {
     },
   });
 
+  const filteredBooks = useMemo(() => {
+    if (!popularBooks || ageFilter === "all") return popularBooks;
+    
+    return popularBooks.filter((book: PopularBook) => {
+      const minAge = book.age_min || 0;
+      const maxAge = book.age_max || 12;
+      
+      switch (ageFilter) {
+        case "0-3":
+          return minAge <= 3 && maxAge >= 0;
+        case "4-7":
+          return minAge <= 7 && maxAge >= 4;
+        case "8-12":
+          return minAge <= 12 && maxAge >= 8;
+        default:
+          return true;
+      }
+    });
+  }, [popularBooks, ageFilter]);
+
   return (
     <div className="min-h-screen p-4 sm:p-6 pb-24">
       <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
@@ -60,16 +83,43 @@ const Popular = () => {
           <h1 className="text-3xl sm:text-4xl font-bold gradient-text leading-tight">⭐ Popular books</h1>
         </div>
 
-        <p className="text-muted-foreground text-lg sm:text-xl font-medium px-2">
-          Books that kids love reading!
-        </p>
+        <div className="space-y-4">
+          <p className="text-muted-foreground text-lg sm:text-xl font-medium px-2">
+            Books that kids love reading!
+          </p>
+
+          {/* Age Filter Tabs */}
+          <Tabs value={ageFilter} onValueChange={(value) => setAgeFilter(value as typeof ageFilter)} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-auto">
+              <TabsTrigger value="all" className="text-sm sm:text-base py-2">
+                All Ages
+              </TabsTrigger>
+              <TabsTrigger value="0-3" className="text-sm sm:text-base py-2">
+                Ages 0-3
+              </TabsTrigger>
+              <TabsTrigger value="4-7" className="text-sm sm:text-base py-2">
+                Ages 4-7
+              </TabsTrigger>
+              <TabsTrigger value="8-12" className="text-sm sm:text-base py-2">
+                Ages 8-12
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Book Count */}
+          {!isLoading && filteredBooks && (
+            <p className="text-sm text-muted-foreground px-2">
+              Showing <span className="font-semibold text-foreground">{filteredBooks.length}</span> children's book{filteredBooks.length !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
 
         {/* Books List */}
-        {isLoading && <BookListSkeleton count={5} />}
+        {isLoading && <BookListSkeleton count={20} />}
 
-        {popularBooks && popularBooks.length > 0 && (
+        {filteredBooks && filteredBooks.length > 0 && (
           <div className="space-y-4 sm:space-y-6">
-            {popularBooks.map((book: PopularBook, index: number) => {
+            {filteredBooks.map((book: PopularBook, index: number) => {
               return (
                 <Card
                   key={book.book_id}
@@ -111,7 +161,7 @@ const Popular = () => {
           </div>
         )}
 
-        {!isLoading && (!popularBooks || popularBooks.length === 0) && (
+        {!isLoading && (!filteredBooks || filteredBooks.length === 0) && (
           <Card className="p-12 text-center">
             <p className="text-xl text-muted-foreground font-medium">
               No popular books available yet. Check back soon! 📚
