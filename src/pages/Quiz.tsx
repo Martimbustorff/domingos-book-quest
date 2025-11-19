@@ -69,24 +69,20 @@ const Quiz = () => {
           throw error;
         }
 
-        // Track quiz start event with validation (only for authenticated users)
+        // Track quiz start event (including anonymous users)
         const { data: { user } } = await supabase.auth.getUser();
         
-        if (user?.id) {
-          try {
-            const eventData = quizEventSchema.parse({
-              event_type: "quiz_started",
-              book_id: bookId,
-              age_band: difficulty,
-              user_id: user.id,
-            });
+        try {
+          const eventData = quizEventSchema.parse({
+            event_type: "quiz_started",
+            book_id: bookId,
+            age_band: difficulty,
+            user_id: user?.id || null,
+          });
 
-            await supabase.from("events").insert({
-              ...eventData,
-            });
-          } catch (validationError) {
-            console.error("Event validation failed:", validationError);
-          }
+          await supabase.from("events").insert(eventData);
+        } catch (validationError) {
+          console.error("Event validation failed:", validationError);
         }
 
         return data;
@@ -184,20 +180,16 @@ const Quiz = () => {
         // Always increment book popularity
         await supabase.rpc("increment_book_popularity", { p_book_id: bookId });
 
-        // Only track event if user is authenticated
-        if (userId) {
-          const eventData = quizEventSchema.parse({
-            event_type: "quiz_completed",
-            book_id: bookId,
-            age_band: difficulty,
-            score: score,
-            user_id: userId,
-          });
+        // Track quiz completion event (including anonymous users)
+        const eventData = quizEventSchema.parse({
+          event_type: "quiz_completed",
+          book_id: bookId,
+          age_band: difficulty,
+          score: score,
+          user_id: userId || null,
+        });
 
-          await supabase.from("events").insert({
-            ...eventData,
-          });
-        }
+        await supabase.from("events").insert(eventData);
       } catch (error) {
         console.error("Failed to record quiz completion:", error);
         // Don't show error to user for analytics failures

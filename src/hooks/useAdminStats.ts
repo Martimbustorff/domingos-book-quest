@@ -12,6 +12,12 @@ export const useAdminStats = () => {
     bookUtilizationPercentage: 0,
     activeUsersRate: 0,
     avgQuizzesPerUser: 0,
+    totalVisitorEvents: 0,
+    visitorQuizStarts: 0,
+    visitorQuizCompletions: 0,
+    visitorCompletionRate: 0,
+    authenticatedEvents: 0,
+    visitorToUserRatio: 0,
     loading: true,
   });
 
@@ -25,6 +31,7 @@ export const useAdminStats = () => {
           activeToday,
           avgScore,
           bookUtil,
+          visitorStats,
         ] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('quiz_history').select('id', { count: 'exact', head: true }),
@@ -32,6 +39,7 @@ export const useAdminStats = () => {
           supabase.rpc('count_active_users_today'),
           supabase.rpc('get_average_quiz_score'),
           supabase.rpc('get_book_utilization').single(),
+          supabase.rpc('get_visitor_stats').single(),
         ]);
 
         const totalUsers = users.count || 0;
@@ -44,6 +52,13 @@ export const useAdminStats = () => {
         const activeUsersRate = totalUsers > 0 ? Math.round((activeTodayCount / totalUsers) * 100) : 0;
         const avgQuizzesPerUser = totalUsers > 0 ? Math.round(totalQuizzes / totalUsers) : 0;
 
+        const totalVisitorEvents = Number(visitorStats.data?.total_visitor_events || 0);
+        const visitorQuizStarts = Number(visitorStats.data?.visitor_quiz_starts || 0);
+        const visitorQuizCompletions = Number(visitorStats.data?.visitor_quiz_completions || 0);
+        const visitorCompletionRate = Number(visitorStats.data?.visitor_completion_rate || 0);
+        const authenticatedEvents = Number(visitorStats.data?.total_authenticated_events || 0);
+        const visitorToUserRatio = totalUsers > 0 ? Math.round(visitorQuizStarts / totalUsers) : 0;
+
         setStats({
           totalUsers,
           totalQuizzes,
@@ -54,6 +69,12 @@ export const useAdminStats = () => {
           bookUtilizationPercentage,
           activeUsersRate,
           avgQuizzesPerUser,
+          totalVisitorEvents,
+          visitorQuizStarts,
+          visitorQuizCompletions,
+          visitorCompletionRate,
+          authenticatedEvents,
+          visitorToUserRatio,
           loading: false,
         });
       } catch (error) {

@@ -704,6 +704,16 @@ export type Database = {
           total_books: number
         }[]
       }
+      get_daily_visitor_activity: {
+        Args: { days_back?: number }
+        Returns: {
+          activity_date: string
+          authenticated_events: number
+          visitor_events: number
+          visitor_quiz_completions: number
+          visitor_quiz_starts: number
+        }[]
+      }
       get_popular_books_dynamic: {
         Args: never
         Returns: {
@@ -729,6 +739,29 @@ export type Database = {
           quizzes_completed: number
           total_points: number
           user_id: string
+        }[]
+      }
+      get_visitor_popular_books: {
+        Args: { limit_count?: number }
+        Returns: {
+          author: string
+          book_id: string
+          cover_url: string
+          title: string
+          visitor_quiz_completions: number
+          visitor_quiz_starts: number
+        }[]
+      }
+      get_visitor_stats: {
+        Args: never
+        Returns: {
+          authenticated_quiz_completions: number
+          authenticated_quiz_starts: number
+          total_authenticated_events: number
+          total_visitor_events: number
+          visitor_completion_rate: number
+          visitor_quiz_completions: number
+          visitor_quiz_starts: number
         }[]
       }
       get_weekly_active_users: {

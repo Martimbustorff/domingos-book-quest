@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { VisitorAnalyticsTab } from "@/components/admin/VisitorAnalyticsTab";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -62,6 +63,8 @@ const AdminPanel = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [allBooksForAdmin, setAllBooksForAdmin] = useState<any[]>([]);
   const [bookSearch, setBookSearch] = useState("");
+  const [dailyVisitorActivity, setDailyVisitorActivity] = useState<any[]>([]);
+  const [visitorPopularBooks, setVisitorPopularBooks] = useState<any[]>([]);
 
   useEffect(() => {
     checkAdminAccess();
@@ -73,6 +76,8 @@ const AdminPanel = () => {
     fetchWeeklyActiveUsers();
     fetchLeaderboard();
     fetchAllBooks();
+    fetchDailyVisitorActivity();
+    fetchVisitorPopularBooks();
   }, []);
 
   const fetchWeeklyActiveUsers = async () => {
@@ -146,6 +151,24 @@ const AdminPanel = () => {
       toast.success("Book deleted successfully");
       fetchAllBooks();
       fetchPopularBooks();
+    }
+  };
+
+  const fetchDailyVisitorActivity = async () => {
+    const { data, error } = await supabase.rpc('get_daily_visitor_activity', { days_back: 30 });
+    if (!error && data) {
+      setDailyVisitorActivity(data.map((d: any) => ({
+        date: new Date(d.activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        visitor_events: Number(d.visitor_events),
+        authenticated_events: Number(d.authenticated_events),
+      })).reverse());
+    }
+  };
+
+  const fetchVisitorPopularBooks = async () => {
+    const { data, error } = await supabase.rpc('get_visitor_popular_books', { limit_count: 10 });
+    if (!error && data) {
+      setVisitorPopularBooks(data);
     }
   };
 
@@ -492,6 +515,19 @@ const AdminPanel = () => {
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4 text-orange-500" />
+                Visitor Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold">{stats.visitorQuizStarts}</div>
+              <p className="text-xs text-muted-foreground mt-1">{stats.visitorCompletionRate}% completion</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
                 <Zap className="h-4 w-4 text-primary" />
                 User Engagement
               </CardTitle>
@@ -518,7 +554,7 @@ const AdminPanel = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-2">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 gap-2">
             <TabsTrigger value="analytics" className="flex-col sm:flex-row gap-1">
               <BarChart3 className="h-4 w-4" />
               <span className="text-xs sm:text-sm">Analytics</span>
@@ -538,6 +574,10 @@ const AdminPanel = () => {
             <TabsTrigger value="books" className="flex-col sm:flex-row gap-1">
               <Library className="h-4 w-4" />
               <span className="text-xs sm:text-sm">Books</span>
+            </TabsTrigger>
+            <TabsTrigger value="visitors" className="flex-col sm:flex-row gap-1">
+              <Activity className="h-4 w-4" />
+              <span className="text-xs sm:text-sm">Visitors</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1056,6 +1096,15 @@ const AdminPanel = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Visitor Analytics Tab */}
+          <TabsContent value="visitors" className="space-y-6">
+            <VisitorAnalyticsTab 
+              stats={stats}
+              dailyVisitorActivity={dailyVisitorActivity}
+              visitorPopularBooks={visitorPopularBooks}
+            />
           </TabsContent>
         </Tabs>
       </div>
