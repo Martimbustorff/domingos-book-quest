@@ -5,8 +5,6 @@ export const useAdminStats = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalQuizzes: 0,
-    visitorQuizzes: 0,
-    authenticatedQuizzes: 0,
     totalBooks: 0,
     activeToday: 0,
     avgQuizScore: 0,
@@ -28,7 +26,7 @@ export const useAdminStats = () => {
       try {
         const [
           users,
-          quizActivity,
+          quizzes,
           books,
           activeToday,
           avgScore,
@@ -36,7 +34,7 @@ export const useAdminStats = () => {
           visitorStats,
         ] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
-          supabase.rpc('get_total_quiz_activity').single(),
+          supabase.from('quiz_history').select('id', { count: 'exact', head: true }),
           supabase.from('books').select('id', { count: 'exact', head: true }),
           supabase.rpc('count_active_users_today'),
           supabase.rpc('get_average_quiz_score'),
@@ -45,9 +43,7 @@ export const useAdminStats = () => {
         ]);
 
         const totalUsers = users.count || 0;
-        const totalQuizzes = Number(quizActivity.data?.total_quizzes || 0);
-        const visitorQuizzes = Number(quizActivity.data?.visitor_quizzes || 0);
-        const authenticatedQuizzes = Number(quizActivity.data?.authenticated_quizzes || 0);
+        const totalQuizzes = quizzes.count || 0;
         const totalBooks = books.count || 0;
         const activeTodayCount = typeof activeToday.data === 'number' ? activeToday.data : 0;
         const avgQuizScore = typeof avgScore.data === 'number' ? avgScore.data : 0;
@@ -66,8 +62,6 @@ export const useAdminStats = () => {
         setStats({
           totalUsers,
           totalQuizzes,
-          visitorQuizzes,
-          authenticatedQuizzes,
           totalBooks,
           activeToday: activeTodayCount,
           avgQuizScore,
