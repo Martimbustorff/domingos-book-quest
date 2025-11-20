@@ -2,10 +2,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Info } from "lucide-react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 interface VisitorAnalyticsTabProps {
   stats: {
+    totalUsers: number;
     totalVisitorEvents: number;
     visitorQuizStarts: number;
     visitorQuizCompletions: number;
@@ -51,41 +53,118 @@ export const VisitorAnalyticsTab = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Total Visitors</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalVisitorEvents}</div>
-              <p className="text-xs text-muted-foreground">Events tracked</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Quiz Starts</CardTitle>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <CardTitle className="text-sm cursor-help flex items-center gap-1">
+                    Anonymous Activity
+                    <Info className="h-3 w-3" />
+                  </CardTitle>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">Anonymous Quiz Starts</p>
+                    <p className="text-xs text-muted-foreground">
+                      Number of quiz attempts by users who haven't registered yet. These visitors can try quizzes before signing up.
+                    </p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.visitorQuizStarts}</div>
-              <p className="text-xs text-muted-foreground">Anonymous users</p>
+              <p className="text-xs text-muted-foreground">
+                Quiz starts (before registration)
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Completions</CardTitle>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <CardTitle className="text-sm cursor-help flex items-center gap-1">
+                    Quiz Completions
+                    <Info className="h-3 w-3" />
+                  </CardTitle>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">Anonymous Completions</p>
+                    <p className="text-xs text-muted-foreground">
+                      Number of quizzes completed by anonymous visitors. These completions show engagement before registration.
+                    </p>
+                    <p className="text-xs font-medium mt-2">
+                      Completion rate: {stats.visitorCompletionRate}%
+                    </p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.visitorQuizCompletions}</div>
-              <p className="text-xs text-muted-foreground">{stats.visitorCompletionRate}% rate</p>
+              <p className="text-xs text-muted-foreground">
+                Finished by anonymous users
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Visitor:User Ratio</CardTitle>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <CardTitle className="text-sm cursor-help flex items-center gap-1">
+                    Completion Rate
+                    <Info className="h-3 w-3" />
+                  </CardTitle>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">Anonymous Completion Rate</p>
+                    <p className="text-xs text-muted-foreground">
+                      Percentage of anonymous users who complete quizzes after starting them. Higher rates indicate good engagement.
+                    </p>
+                    <p className="text-xs font-medium mt-2">
+                      {stats.visitorQuizCompletions} completed / {stats.visitorQuizStarts} started
+                    </p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.visitorToUserRatio}:1</div>
-              <p className="text-xs text-muted-foreground">Conversion potential</p>
+              <div className="text-2xl font-bold">{stats.visitorCompletionRate}%</div>
+              <p className="text-xs text-muted-foreground">
+                Anonymous engagement
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <CardTitle className="text-sm cursor-help flex items-center gap-1">
+                    Anonymous:Registered
+                    <Info className="h-3 w-3" />
+                  </CardTitle>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">Activity Ratio</p>
+                    <p className="text-xs text-muted-foreground">
+                      Ratio of anonymous quiz starts to total registered users. Shows the funnel from visitor to registered user.
+                    </p>
+                    <p className="text-xs font-medium mt-2">
+                      {stats.visitorQuizStarts} anonymous starts : {stats.totalUsers} registered users
+                    </p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.visitorQuizStarts}:{stats.totalUsers}</div>
+              <p className="text-xs text-muted-foreground">
+                Activity ratio
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -93,19 +172,19 @@ export const VisitorAnalyticsTab = ({
         {/* Daily Visitor Activity Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Daily Visitor vs Authenticated Activity</CardTitle>
-            <CardDescription>30-day trend comparison</CardDescription>
+            <CardTitle>Daily Activity Trend (Last 30 Days)</CardTitle>
+            <CardDescription>Compare anonymous vs authenticated user activity over time</CardDescription>
           </CardHeader>
           <CardContent>
             {dailyVisitorActivity.length > 0 ? (
               <ChartContainer
                 config={{
                   visitor_events: {
-                    label: "Visitors",
+                    label: "Anonymous Visitors",
                     color: "hsl(var(--chart-1))",
                   },
                   authenticated_events: {
-                    label: "Registered Users",
+                    label: "Authenticated Users",
                     color: "hsl(var(--chart-2))",
                   },
                 }}

@@ -730,6 +730,15 @@ export type Database = {
           unique_users: number
         }[]
       }
+      get_total_quiz_activity: {
+        Args: never
+        Returns: {
+          authenticated_quizzes: number
+          total_quizzes: number
+          unique_quiz_takers: number
+          visitor_quizzes: number
+        }[]
+      }
       get_user_leaderboard: {
         Args: { limit_count?: number }
         Returns: {
