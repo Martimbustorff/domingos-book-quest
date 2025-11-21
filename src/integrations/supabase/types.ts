@@ -695,6 +695,10 @@ export type Database = {
     Functions: {
       cleanup_old_request_logs: { Args: never; Returns: undefined }
       count_active_users_today: { Args: never; Returns: number }
+      delete_book_and_related: {
+        Args: { book_id_param: string }
+        Returns: undefined
+      }
       get_average_quiz_score: { Args: never; Returns: number }
       get_book_utilization: {
         Args: never
@@ -728,6 +732,15 @@ export type Database = {
           ranking: number
           title: string
           unique_users: number
+        }[]
+      }
+      get_total_quiz_activity: {
+        Args: never
+        Returns: {
+          authenticated_quizzes: number
+          total_quizzes: number
+          unique_quiz_takers: number
+          visitor_quizzes: number
         }[]
       }
       get_user_leaderboard: {

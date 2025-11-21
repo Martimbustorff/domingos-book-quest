@@ -138,20 +138,57 @@ const AdminPanel = () => {
   }, [allBooksForAdmin, bookSearch]);
 
   const deleteBook = async (bookId: string) => {
-    if (!confirm("Are you sure you want to delete this book? This will also delete all associated quiz templates.")) return;
+    if (!confirm("Are you sure you want to delete this book? This will also delete all associated quiz templates, events, and related data.")) return;
     
-    const { error } = await supabase
-      .from('books')
-      .delete()
-      .eq('id', bookId);
-    
-    if (error) {
-      toast.error("Failed to delete book: " + error.message);
-    } else {
-      toast.success("Book deleted successfully");
+    try {
+      const { error } = await supabase.rpc('delete_book_and_related', { 
+        book_id_param: bookId 
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Book and all related data deleted successfully");
       fetchAllBooks();
       fetchPopularBooks();
+    } catch (error: any) {
+      toast.error("Failed to delete book: " + error.message);
     }
+  };
+
+  const bulkDeleteNonChildrenBooks = async () => {
+    const nonChildrenBooks = allBooksForAdmin.filter(b => 
+      b.age_max === null || b.age_max > 12
+    );
+    
+    if (nonChildrenBooks.length === 0) {
+      toast.info("No non-children books found to delete");
+      return;
+    }
+    
+    if (!confirm(`This will delete ${nonChildrenBooks.length} non-children books and all their related data. Are you sure?`)) {
+      return;
+    }
+    
+    let deleted = 0;
+    let failed = 0;
+    
+    for (const book of nonChildrenBooks) {
+      try {
+        const { error } = await supabase.rpc('delete_book_and_related', { 
+          book_id_param: book.id 
+        });
+        
+        if (error) throw error;
+        deleted++;
+      } catch (error) {
+        console.error(`Failed to delete book ${book.title}:`, error);
+        failed++;
+      }
+    }
+    
+    toast.success(`Deleted ${deleted} books. ${failed > 0 ? `Failed: ${failed}` : ''}`);
+    fetchAllBooks();
+    fetchPopularBooks();
   };
 
   const fetchDailyVisitorActivity = async () => {
@@ -983,6 +1020,14 @@ const AdminPanel = () => {
                   <Button onClick={fetchAllBooks} variant="outline">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={bulkDeleteNonChildrenBooks}
+                    className="w-full sm:w-auto"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Bulk Delete Non-Children Books
                   </Button>
                 </div>
 
