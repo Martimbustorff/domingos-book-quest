@@ -96,6 +96,7 @@ const Signup = () => {
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
+          {/* Role selection hidden - all users default to "student" role
           <div className="space-y-2">
             <Label htmlFor="role" className="text-sm font-medium">
               I am a...
@@ -133,6 +134,7 @@ const Signup = () => {
               </button>
             </div>
           </div>
+          */}
 
           <div className="space-y-2">
             <Label htmlFor="displayName" className="text-sm font-medium">
