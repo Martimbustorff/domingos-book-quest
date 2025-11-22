@@ -202,7 +202,7 @@ const AcceptInvitation = () => {
           <div className="flex gap-3 pt-4">
             <Button
               className="flex-1"
-              variant="gradient"
+              variant="accent"
               onClick={handleAccept}
               disabled={processing}
             >

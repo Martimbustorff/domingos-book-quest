@@ -91,7 +91,7 @@ const Signup = () => {
           <div className="flex justify-center mb-4">
             <BookOpen className="h-12 w-12 text-primary" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold gradient-text">Join Us!</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Join Us!</h1>
           <p className="text-muted-foreground">Create an account to start your reading journey</p>
         </div>
 

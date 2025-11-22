@@ -100,7 +100,7 @@ const ParentDashboard = () => {
             {userRole === "parent" ? "Parent" : "Teacher"} Dashboard
           </h1>
           <Button
-            variant="gradient"
+            variant="accent"
             onClick={() => setShowInvitations(!showInvitations)}
             className="gap-2"
           >
@@ -185,7 +185,7 @@ const ParentDashboard = () => {
                   No {userRole === "parent" ? "children" : "students"} connected yet
                 </p>
                 <Button
-                  variant="gradient"
+                  variant="accent"
                   onClick={() => setShowInvitations(true)}
                   className="gap-2"
                 >

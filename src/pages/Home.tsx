@@ -55,10 +55,10 @@ const Home = () => {
 
         {/* Title */}
         <div className="space-y-3 sm:space-y-4 px-2">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold gradient-text leading-tight">
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">
             Domingos Book Quiz
           </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground font-medium">
+          <p className="text-lg sm:text-xl text-muted-foreground">
             Fun questions for little readers! 📚
           </p>
         </div>
@@ -69,8 +69,8 @@ const Home = () => {
             <>
               <Button
                 size="lg"
-                variant="gradient"
-                className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
+                variant="accent"
+                className="w-full min-h-[56px]"
                 onClick={() => navigate("/parent-dashboard")}
               >
                 <Users className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
@@ -80,7 +80,7 @@ const Home = () => {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] quiz-button min-h-[56px]"
+                className="w-full min-h-[56px]"
                 onClick={() => navigate("/contribute")}
               >
                 <BookPlus className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
@@ -91,7 +91,8 @@ const Home = () => {
           
           <Button
             size="lg"
-            className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] shadow-[0_8px_32px_rgba(99,102,241,0.3)] hover:shadow-[0_12px_48px_rgba(99,102,241,0.5)] transition-all quiz-button min-h-[56px]"
+            variant="default"
+            className="w-full min-h-[56px]"
             onClick={() => navigate("/search")}
           >
             <BookOpen className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
@@ -100,8 +101,8 @@ const Home = () => {
 
           <Button
             size="lg"
-            variant="gradient"
-            className="w-full h-14 sm:h-16 text-lg sm:text-xl font-bold rounded-[24px] shadow-[0_8px_32px_rgba(168,85,247,0.3)] hover:shadow-[0_12px_48px_rgba(168,85,247,0.5)] transition-all quiz-button min-h-[56px]"
+            variant="accent"
+            className="w-full min-h-[56px]"
             onClick={() => navigate("/popular")}
           >
             <Star className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />

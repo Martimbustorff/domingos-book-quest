@@ -129,7 +129,7 @@ const InvitationManager = ({ relationshipType, onClose, onInvitationCreated }: I
           onClick={createInvitation}
           disabled={loading}
           className="w-full"
-          variant="gradient"
+          variant="accent"
         >
           {loading ? (
             <>

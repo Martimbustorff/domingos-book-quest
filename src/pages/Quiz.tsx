@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Volume2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { quizEventSchema } from "@/lib/validation";
+import { cn } from "@/lib/utils";
 
 interface Question {
   text: string;
@@ -236,9 +237,9 @@ const Quiz = () => {
       <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
         {/* Progress */}
         <div className="space-y-3">
-          <div className="flex justify-between text-sm text-muted-foreground font-medium">
-            <span>Question {currentQuestion + 1} of {questions.length}</span>
-            <span className="gradient-text">Score: {score}</span>
+          <div className="flex justify-between text-sm font-medium">
+            <span className="text-muted-foreground">Question {currentQuestion + 1} of {questions.length}</span>
+            <span className="text-primary">Score: {score}</span>
           </div>
           <Progress value={progress} className="h-4" />
         </div>
@@ -246,13 +247,13 @@ const Quiz = () => {
         {/* Question */}
         <Card className="p-6 sm:p-8 space-y-4">
           <div className="flex items-start gap-3 sm:gap-4">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold flex-1 gradient-text leading-tight">
+            <h2 className="text-xl sm:text-2xl font-bold flex-1 leading-tight">
               {currentQ.text}
             </h2>
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full flex-shrink-0 hover:bg-accent/20 min-w-[44px] min-h-[44px]"
+              className="rounded-full flex-shrink-0 min-w-[44px] min-h-[44px]"
               onClick={() => speakText(currentQ.text)}
             >
               <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -269,23 +270,22 @@ const Quiz = () => {
             const showWrong = showFeedback && isSelected && !isCorrect;
 
             return (
-              <Card
+              <Button
                 key={index}
-                className={`p-5 sm:p-6 cursor-pointer transition-all quiz-button min-h-[64px] sm:min-h-[72px] ${
-                  showCorrect
-                    ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-2 border-green-500 animate-pop-in"
-                    : showWrong
-                    ? "bg-muted/50 border-2 border-muted-foreground/20"
-                    : "border-transparent hover:border-primary/30 active:scale-[0.98]"
-                }`}
                 onClick={() => handleAnswerSelect(index)}
+                className={cn(
+                  "w-full p-4 text-left font-medium text-base min-h-[56px] rounded-xl h-auto whitespace-normal justify-start",
+                  !showFeedback && "border-2 border-border bg-white hover:bg-muted hover:border-primary",
+                  showCorrect && "border-2 border-quiz-correct-border bg-quiz-correct",
+                  showWrong && "border-2 border-quiz-wrong-border bg-quiz-wrong"
+                )}
+                disabled={showFeedback}
+                variant="outline"
               >
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="flex-1 text-base sm:text-lg md:text-xl font-semibold">{option}</div>
-                  {showCorrect && <span className="text-2xl sm:text-3xl">✓</span>}
-                  {showWrong && <span className="text-2xl sm:text-3xl opacity-50">✗</span>}
-                </div>
-              </Card>
+                <span className="flex-1">{option}</span>
+                {showCorrect && <span className="text-2xl ml-2">✓</span>}
+                {showWrong && <span className="text-2xl ml-2 opacity-50">✗</span>}
+              </Button>
             );
           })}
         </div>
