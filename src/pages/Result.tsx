@@ -156,17 +156,17 @@ const Result = () => {
 
           {/* Score */}
           <div className="space-y-3 sm:space-y-4">
-            <p className="text-5xl sm:text-6xl md:text-7xl font-bold gradient-text">
+            <p className="text-5xl sm:text-6xl font-bold text-primary">
               {score} / {total}
             </p>
-            <p className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight px-2">{message}</p>
+            <p className="text-xl sm:text-2xl font-semibold">{message}</p>
           </div>
 
           {/* Points */}
-          <Card className="p-5 sm:p-6 bg-gradient-to-r from-accent/20 to-primary/20">
-            <p className="text-lg sm:text-xl">
-              <span className="text-2xl sm:text-3xl">🪙</span> You earned{" "}
-              <span className="font-bold gradient-text-accent text-xl sm:text-2xl">+{points} points</span>
+          <Card className="p-6 bg-accent/10 border border-accent/20 rounded-lg">
+            <p className="text-lg">
+              <span className="text-3xl">🪙</span> You earned{" "}
+              <span className="font-bold text-accent text-2xl">+{points} points</span>
             </p>
           </Card>
 
@@ -196,7 +196,8 @@ const Result = () => {
 
           <Button
             size="lg"
-            className="w-full h-14 sm:h-16 text-lg sm:text-xl rounded-[24px] shadow-[0_8px_32px_rgba(99,102,241,0.3)] quiz-button font-semibold min-h-[56px]"
+            variant="default"
+            className="w-full h-14 sm:h-16 text-lg sm:text-xl rounded-[24px] quiz-button font-semibold min-h-[56px]"
             onClick={() => navigate("/search")}
           >
             <BookOpen className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
@@ -205,8 +206,8 @@ const Result = () => {
 
           <Button
             size="lg"
-            variant="gradient"
-            className="w-full h-14 sm:h-16 text-lg sm:text-xl rounded-[24px] quiz-button font-semibold min-h-[56px]"
+            variant="accent"
+            className="w-full min-h-[56px]"
             onClick={() => navigate("/dashboard")}
           >
             <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />

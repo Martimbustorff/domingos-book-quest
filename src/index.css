@@ -8,78 +8,54 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Vibrant Innovation Palette - Light Mode */
+    /* Core Colors */
     --background: 0 0% 100%;
-    --foreground: 240 15% 20%;
-
-    --card: 0 0% 98%;
-    --card-foreground: 240 15% 20%;
-
+    --foreground: 222 47% 11%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 240 15% 20%;
-
-    /* Electric Indigo - Main brand color */
-    --primary: 240 85% 65%;
+    --popover-foreground: 222 47% 11%;
+    
+    /* Primary - Trustworthy Blue */
+    --primary: 213 94% 58%;
     --primary-foreground: 0 0% 100%;
-
-    /* Neon Mint - Secondary refreshing color */
-    --secondary: 165 80% 65%;
-    --secondary-foreground: 0 0% 100%;
-
-    /* Soft muted colors */
-    --muted: 240 10% 95%;
-    --muted-foreground: 240 15% 45%;
-
-    /* Lavender Dream - Accent color */
-    --accent: 270 75% 75%;
+    
+    /* Accent - Warm Orange */
+    --accent: 25 95% 58%;
     --accent-foreground: 0 0% 100%;
-
-    /* Coral Sunrise - Destructive */
-    --destructive: 15 95% 68%;
-    --destructive-foreground: 0 0% 100%;
-
-    /* Glassmorphic borders */
-    --border: 240 10% 85%;
-    --input: 240 10% 85%;
-    --ring: 240 85% 65%;
-
-    --radius: 1.5rem;
-
-    /* Success - Neon green */
-    --success: 140 80% 55%;
+    
+    /* Neutrals */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 213 94% 58%;
+    
+    /* Border Radius */
+    --radius: 1rem; /* 16px */
+    
+    /* Semantic */
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-
-    /* Special quiz colors */
-    --quiz-correct: 140 80% 96%;
-    --quiz-correct-border: 140 80% 55%;
-    --quiz-wrong: 15 95% 96%;
-    --quiz-wrong-border: 15 95% 68%;
-
-    /* Gradient definitions */
-    --gradient-primary: linear-gradient(135deg, hsl(240 85% 65%), hsl(165 80% 65%));
-    --gradient-secondary: linear-gradient(135deg, hsl(270 75% 75%), hsl(15 95% 68%));
-    --gradient-mesh: linear-gradient(135deg, 
-      hsl(240 100% 98%) 0%, 
-      hsl(165 100% 97%) 50%, 
-      hsl(270 100% 98%) 100%);
     
-    /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.95);
-    --glass-border: rgba(0, 0, 0, 0.08);
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
     
-    /* Soft colorful glows */
-    --glow-primary: 0 0 40px hsl(240 85% 65% / 0.3);
-    --glow-secondary: 0 0 40px hsl(165 80% 65% / 0.3);
-    --glow-accent: 0 0 40px hsl(270 75% 75% / 0.3);
-    --shadow-soft: 0 8px 32px -8px hsl(240 85% 65% / 0.15);
-    --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
-
+    /* Quiz Colors */
+    --quiz-correct: 142 76% 95%;
+    --quiz-correct-border: 142 71% 45%;
+    --quiz-wrong: 0 86% 95%;
+    --quiz-wrong-border: 0 84% 60%;
+    
     /* Chart colors */
-    --chart-1: 240 85% 65%;
-    --chart-2: 165 80% 65%;
-    --chart-3: 15 95% 68%;
-    --chart-4: 270 75% 75%;
-    --chart-5: 140 80% 55%;
+    --chart-1: 213 94% 58%;
+    --chart-2: 25 95% 58%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 215 16% 47%;
   }
 
   .dark {
@@ -147,15 +123,15 @@ All colors MUST be HSL.
   }
 
   h1 {
-    @apply text-5xl md:text-6xl;
+    @apply text-4xl sm:text-5xl tracking-tight;
   }
 
   h2 {
-    @apply text-3xl md:text-4xl;
+    @apply text-3xl sm:text-4xl;
   }
 
   h3 {
-    @apply text-xl md:text-2xl;
+    @apply text-xl sm:text-2xl font-semibold;
   }
 }
 

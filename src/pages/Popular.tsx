@@ -70,7 +70,7 @@ const Popular = () => {
           >
             <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
-          <h1 className="text-3xl sm:text-4xl font-bold gradient-text leading-tight">⭐ Popular books</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground">⭐ Popular books</h1>
         </div>
 
         <div className="space-y-4">
@@ -103,36 +103,35 @@ const Popular = () => {
 
         {searchedBooks && searchedBooks.length > 0 && (
           <div className="space-y-4 sm:space-y-6">
-            {searchedBooks.map((book: PopularBook, index: number) => {
+            {searchedBooks.map((book: PopularBook) => {
               return (
                 <Card
                   key={book.book_id}
-                  className="p-5 sm:p-6 cursor-pointer card-lift quiz-button animate-fade-in-up min-h-[100px]"
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  className="p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200"
                   onClick={() => navigate(`/book/${book.book_id}`)}
                 >
-                  <div className="flex gap-3 sm:gap-6 items-start">
-                    <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground flex items-center justify-center font-bold text-base sm:text-lg shadow-[0_4px_12px_rgba(99,102,241,0.3)]">
+                  <div className="flex gap-4 items-start">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-sm">
                       {book.ranking}
                     </div>
                     {book.cover_url ? (
                       <img
                         src={book.cover_url}
                         alt={book.title}
-                        className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-[12px] shadow-lg flex-shrink-0"
+                        className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-lg shadow-sm flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-16 h-20 sm:w-20 sm:h-24 bg-secondary/30 rounded-[12px] flex items-center justify-center flex-shrink-0">
-                        <Book className="h-8 w-8 sm:h-10 sm:w-10 text-secondary" />
+                      <div className="w-16 h-20 sm:w-20 sm:h-24 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Book className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg sm:text-xl mb-1 leading-tight">{book.title}</h3>
+                      <h3 className="font-semibold text-lg">{book.title}</h3>
                       {book.author && (
-                        <p className="text-muted-foreground font-medium text-sm sm:text-base">by {book.author}</p>
+                        <p className="text-muted-foreground text-sm">by {book.author}</p>
                       )}
                       {book.quiz_count > 0 && (
-                        <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2 font-medium">
+                        <p className="text-muted-foreground text-xs mt-2">
                           🎯 {book.quiz_count} quiz{book.quiz_count !== 1 ? 'zes' : ''} • 
                           👥 {book.unique_users} reader{book.unique_users !== 1 ? 's' : ''}{book.avg_score && ` • ⭐ ${book.avg_score}% avg`}
                         </p>

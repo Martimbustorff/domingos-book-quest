@@ -93,39 +93,33 @@ const BookDetail = () => {
         </Button>
 
         {/* Book Display */}
-        <Card className="p-6 space-y-6 flex flex-col items-center text-center">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold">{book.title}</h1>
-            {book.author && (
-              <p className="text-lg text-muted-foreground">by {book.author}</p>
-            )}
-          </div>
-
+        <Card className="p-6 flex flex-col items-center text-center rounded-lg">
+          <h1 className="text-2xl font-bold">{book.title}</h1>
+          {book.author && (
+            <p className="text-lg text-muted-foreground mt-1">by {book.author}</p>
+          )}
+          
           {book.cover_url ? (
             <img
               src={book.cover_url}
               alt={book.title}
-              className="w-48 h-64 object-cover rounded-lg shadow-md"
+              className="w-48 h-64 object-cover rounded-lg shadow-md mt-4"
             />
           ) : (
-            <div className="w-48 h-64 bg-secondary rounded-lg flex items-center justify-center">
-              <Book className="h-20 w-20 text-secondary-foreground" />
+            <div className="w-48 h-64 bg-muted rounded-lg flex items-center justify-center mt-4">
+              <Book className="h-20 w-20 text-muted-foreground" />
             </div>
           )}
-
-          <div className="space-y-3">
-            <p className="text-lg font-medium">Nice choice! 🌟</p>
-            <p className="text-muted-foreground">
-              Have you already read this story?
-            </p>
-          </div>
+          
+          <p className="text-lg font-medium mt-4">Nice choice! 🌟</p>
+          <p className="text-muted-foreground">Have you already read this story?</p>
         </Card>
 
         {/* Video Option */}
         {videoData?.hasVideo && (
           <Button
             size="lg"
-            variant="secondary"
+            variant="accent"
             className="w-full h-14 text-lg rounded-2xl quiz-button"
             onClick={handleWatchVideo}
           >

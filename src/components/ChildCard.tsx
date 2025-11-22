@@ -23,7 +23,7 @@ const ChildCard = ({
 }: ChildCardProps) => {
   return (
     <Card
-      className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+      className="cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200"
       onClick={onClick}
     >
       <CardHeader className="pb-3">

@@ -62,9 +62,11 @@ export default {
         sans: ["Outfit", "system-ui", "sans-serif"],
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm: "8px",
+        md: "12px",
+        lg: "16px",
+        xl: "20px",
+        full: "9999px",
       },
       keyframes: {
         "accordion-down": {
