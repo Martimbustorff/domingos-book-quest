@@ -161,6 +161,29 @@ serve(async (req) => {
 
     const books = Array.from(bookMap.values()).slice(0, 10);
 
+    // Background enrichment: Trigger enrichment for new books without blocking response
+    const newBooksNeedingEnrichment = books.filter(
+      (book) => !book.cover_url || !book.age_min || !book.age_max
+    );
+
+    if (newBooksNeedingEnrichment.length > 0) {
+      console.log(`[SEARCH] Triggering background enrichment for ${newBooksNeedingEnrichment.length} books`);
+      
+      // Fire-and-forget: enrich books in background without awaiting
+      fetch(`${supabaseUrl}/functions/v1/enrich-book-data`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          book_ids: newBooksNeedingEnrichment.map((b) => b.id),
+        }),
+      }).catch((err) => {
+        console.error("[SEARCH] Background enrichment trigger failed:", err);
+      });
+    }
+
     return new Response(JSON.stringify({ books }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -65,6 +65,7 @@ const AdminPanel = () => {
   const [bookSearch, setBookSearch] = useState("");
   const [dailyVisitorActivity, setDailyVisitorActivity] = useState<any[]>([]);
   const [visitorPopularBooks, setVisitorPopularBooks] = useState<any[]>([]);
+  const [enrichingBooks, setEnrichingBooks] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -189,6 +190,55 @@ const AdminPanel = () => {
     toast.success(`Deleted ${deleted} books. ${failed > 0 ? `Failed: ${failed}` : ''}`);
     fetchAllBooks();
     fetchPopularBooks();
+  };
+
+  const enrichBooksWithMissingData = async () => {
+    const booksNeedingEnrichment = allBooksForAdmin.filter(
+      (b) => !b.cover_url || b.age_min === null || b.age_max === null
+    );
+
+    if (booksNeedingEnrichment.length === 0) {
+      toast.info("All books already have complete data!");
+      return;
+    }
+
+    if (!confirm(
+      `This will enrich ${booksNeedingEnrichment.length} books with missing covers or descriptions. ` +
+      `This process uses multiple data sources (Google Books, Open Library, AI) and may take several minutes. Continue?`
+    )) {
+      return;
+    }
+
+    setEnrichingBooks(true);
+    toast.info(`Starting enrichment for ${booksNeedingEnrichment.length} books...`);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("enrich-book-data", {
+        body: {
+          book_ids: booksNeedingEnrichment.map((b) => b.id),
+        },
+      });
+
+      if (error) throw error;
+
+      const { enriched_count, failed_count, results } = data;
+
+      toast.success(
+        `Enrichment complete! ${enriched_count} books enriched successfully.` +
+        (failed_count > 0 ? ` ${failed_count} failed.` : "")
+      );
+
+      // Log detailed results
+      console.log("[ADMIN] Enrichment results:", results);
+
+      // Refresh book list
+      await fetchAllBooks();
+    } catch (error: any) {
+      console.error("[ADMIN] Enrichment error:", error);
+      toast.error("Failed to enrich books: " + error.message);
+    } finally {
+      setEnrichingBooks(false);
+    }
   };
 
   const fetchDailyVisitorActivity = async () => {
@@ -1020,6 +1070,24 @@ const AdminPanel = () => {
                   <Button onClick={fetchAllBooks} variant="outline">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
+                  </Button>
+                  <Button 
+                    variant="accent" 
+                    onClick={enrichBooksWithMissingData}
+                    disabled={enrichingBooks}
+                    className="w-full sm:w-auto"
+                  >
+                    {enrichingBooks ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Enriching Books...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Enrich Missing Data
+                      </>
+                    )}
                   </Button>
                   <Button 
                     variant="destructive" 
