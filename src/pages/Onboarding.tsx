@@ -13,8 +13,21 @@ const Onboarding = () => {
     navigate('/login');
   };
 
+  const handleSkip = () => {
+    localStorage.setItem('onboarding_complete', 'true');
+    navigate('/');
+  };
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative">
+      {/* Skip button */}
+      <button
+        onClick={handleSkip}
+        className="absolute top-6 right-6 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
+      >
+        Skip
+      </button>
+
       <div className="w-full max-w-md flex flex-col items-center justify-center space-y-8">
         
         {/* Mascot Section with Orange Glow */}
