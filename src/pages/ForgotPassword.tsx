@@ -17,11 +17,12 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      // Use Netlify domain for production, current origin for development
-      const redirectUrl = window.location.hostname.includes('lovable.app')
-        ? 'https://domingosbookquiz.netlify.app/reset-password'
-        : `${window.location.origin}/reset-password`;
+      // Use current origin only for localhost, otherwise always use Netlify domain
+      const redirectUrl = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')
+        ? `${window.location.origin}/reset-password`
+        : 'https://domingosbookquiz.netlify.app/reset-password';
       
+      console.log('Current hostname:', window.location.hostname);
       console.log('Sending password reset to:', email);
       console.log('Redirect URL:', redirectUrl);
       
