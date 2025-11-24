@@ -41,31 +41,51 @@ const Search = () => {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 pb-24">
-      <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
-        {/* Header */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/")}
-            className="rounded-full hover:bg-accent/20 min-w-[44px] min-h-[44px] flex-shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
-          </Button>
-          <h1 className="text-3xl sm:text-4xl font-bold gradient-text leading-tight">Find your book</h1>
+      <div className="max-w-2xl mx-auto space-y-8 sm:space-y-10">
+        {/* Creative Header with Gradient Background */}
+        <div className="relative overflow-hidden rounded-[32px] p-8 sm:p-10 animate-fade-in" 
+             style={{ 
+               background: 'linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--accent) / 0.2) 50%, hsl(var(--chart-2) / 0.15) 100%)',
+               backdropFilter: 'blur(10px)'
+             }}>
+          {/* Decorative circles */}
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-primary/10 blur-2xl animate-float" />
+          <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-accent/10 blur-2xl animate-float" style={{ animationDelay: '1s' }} />
+          
+          <div className="relative flex items-center gap-4 sm:gap-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/")}
+              className="rounded-full hover:bg-background/80 hover:scale-110 transition-all duration-300 min-w-[48px] min-h-[48px] flex-shrink-0 backdrop-blur-sm border border-border/50"
+            >
+              <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+            </Button>
+            <div className="space-y-2">
+              <h1 className="text-3xl sm:text-5xl font-bold gradient-text leading-tight animate-fade-in">
+                Find your book
+              </h1>
+              <p className="text-muted-foreground text-sm sm:text-base font-medium">
+                Search through thousands of amazing stories
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Search Input */}
-        <div className="relative">
-          <SearchIcon className="absolute left-4 sm:left-6 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5 sm:h-6 sm:w-6" />
-          <Input
-            type="text"
-            placeholder="Type your book's name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 sm:pl-16 h-14 sm:h-16 text-base sm:text-xl rounded-[24px] glass-card border-2 focus:border-primary/50 font-medium"
-            autoFocus
-          />
+        {/* Enhanced Search Input */}
+        <div className="relative group animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="absolute inset-0 rounded-[28px] bg-gradient-to-r from-primary/20 via-accent/20 to-chart-2/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative">
+            <SearchIcon className="absolute left-5 sm:left-7 top-1/2 transform -translate-y-1/2 text-primary h-6 w-6 sm:h-7 sm:w-7 group-hover:scale-110 transition-transform duration-300" />
+            <Input
+              type="text"
+              placeholder="Type your book's name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-14 sm:pl-20 pr-6 h-16 sm:h-20 text-base sm:text-xl rounded-[28px] glass-card border-2 border-border/50 focus:border-primary/70 hover:border-primary/50 font-medium shadow-lg transition-all duration-300 focus:shadow-xl focus:shadow-primary/10"
+              autoFocus
+            />
+          </div>
         </div>
 
         {/* Results */}
