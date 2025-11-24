@@ -249,12 +249,12 @@ export default function Contribute() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-quiz-purple via-quiz-blue to-quiz-pink p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
           onClick={() => navigate("/")}
-          className="mb-4 text-white"
+          className="mb-4"
         >
           ← Back to Home
         </Button>

@@ -109,8 +109,8 @@ const Search = () => {
                       className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-[12px] shadow-lg flex-shrink-0"
                     />
                   ) : (
-                    <div className="w-16 h-20 sm:w-20 sm:h-24 bg-secondary/30 rounded-[12px] flex items-center justify-center flex-shrink-0">
-                      <Book className="h-8 w-8 sm:h-10 sm:w-10 text-secondary" />
+                    <div className="w-16 h-20 sm:w-20 sm:h-24 bg-muted rounded-[12px] flex items-center justify-center flex-shrink-0">
+                      <Book className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

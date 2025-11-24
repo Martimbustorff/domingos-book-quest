@@ -111,7 +111,7 @@ const Popular = () => {
                   onClick={() => navigate(`/book/${book.book_id}`)}
                 >
                   <div className="flex gap-4 items-start">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shadow-sm">
                       {book.ranking}
                     </div>
                     {book.cover_url ? (

@@ -165,7 +165,12 @@ const Quiz = () => {
         particleCount: 80,
         spread: 60,
         origin: { y: 0.6 },
-        colors: ['#6366F1', '#22D3EE', '#F472B6', '#A78BFA']
+        colors: [
+          'hsl(var(--primary))',
+          'hsl(var(--accent-foreground))',
+          'hsl(var(--chart-1))',
+          'hsl(var(--chart-2))'
+        ]
       });
     }
   };

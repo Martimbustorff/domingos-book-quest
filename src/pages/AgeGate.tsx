@@ -18,30 +18,30 @@ const AgeGate = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-primary via-primary/80 to-secondary animate-in fade-in">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-primary via-primary/80 to-accent animate-in fade-in">
       <div className="text-center space-y-8 animate-in fade-in-up">
         {/* App Icon */}
         <div className="flex justify-center">
-          <div className="bg-white/20 backdrop-blur-sm p-8 rounded-full animate-pulse">
-            <BookOpen className="h-20 w-20 text-white" />
+          <div className="bg-background/20 backdrop-blur-sm p-8 rounded-full animate-pulse">
+            <BookOpen className="h-20 w-20 text-primary-foreground" />
           </div>
         </div>
         
         {/* App Name */}
-        <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white">
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary-foreground">
           Domingos Book Quest
         </h1>
         
         {/* Purpose Statement */}
-        <p className="text-xl sm:text-2xl text-white/90 max-w-2xl mx-auto font-medium">
+        <p className="text-xl sm:text-2xl text-primary-foreground/90 max-w-2xl mx-auto font-medium">
           A safe, educational quiz platform for young readers
         </p>
 
         {/* Loading Indicator */}
         <div className="flex justify-center gap-2 pt-8">
-          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          <div className="w-2 h-2 bg-primary-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-2 h-2 bg-primary-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+          <div className="w-2 h-2 bg-primary-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
         </div>
       </div>
     </div>
