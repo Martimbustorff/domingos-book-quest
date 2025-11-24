@@ -516,7 +516,7 @@ const AdminPanel = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold gradient-text">
               Admin Control Panel
             </h1>
             <p className="text-muted-foreground">Platform administration and analytics</p>
@@ -602,7 +602,7 @@ const AdminPanel = () => {
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4 text-orange-500" />
+                <Activity className="h-4 w-4 text-accent-foreground" />
                 Visitor Activity
               </CardTitle>
             </CardHeader>
