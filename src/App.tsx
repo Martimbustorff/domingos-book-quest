@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useOAuthProfile } from "@/hooks/useOAuthProfile";
 import Home from "./pages/Home";
 import Search from "./pages/Search";
 import Popular from "./pages/Popular";
@@ -95,9 +96,11 @@ class ErrorBoundary extends Component<
   }
 }
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
+const AppContent = () => {
+  useOAuthProfile();
+  
+  return (
+    <>
       <Toaster />
       <Sonner />
       <BrowserRouter>
@@ -125,6 +128,14 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+    </>
+  );
+};
+
+const App = () => (
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
     </QueryClientProvider>
   </ErrorBoundary>
 );
