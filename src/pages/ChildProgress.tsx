@@ -231,7 +231,7 @@ const ChildProgress = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-secondary">
+              <div className="text-3xl font-bold text-foreground">
                 {stats.current_streak} days
               </div>
             </CardContent>
