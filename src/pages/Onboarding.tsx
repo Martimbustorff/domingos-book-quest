@@ -1,12 +1,18 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleStartJourney = () => {
+    setIsTransitioning(true);
     localStorage.setItem('onboarding_complete', 'true');
-    navigate('/');
+    
+    setTimeout(() => {
+      navigate('/');
+    }, 800);
   };
 
   const handleLogin = () => {
@@ -14,9 +20,8 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-
-      <div className="w-full max-w-md flex flex-col items-center justify-center space-y-8">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 page-turn-container">
+      <div className={`w-full max-w-md flex flex-col items-center justify-center space-y-8 ${isTransitioning ? 'animate-page-turn' : ''}`}>
         
         {/* Mascot Section with Orange Glow */}
         <div className="relative orange-glow animate-slide-up-fade">
@@ -41,9 +46,10 @@ const Onboarding = () => {
         <div className="w-full space-y-4">
           <Button
             onClick={handleStartJourney}
-            className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold shadow-lg hover:bg-primary/90 active:scale-95 transition-transform duration-150"
+            disabled={isTransitioning}
+            className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold shadow-lg hover:bg-primary/90 active:scale-95 transition-transform duration-150 disabled:opacity-50"
           >
-            Start your journey
+            {isTransitioning ? 'Turning the page...' : 'Start your journey'}
           </Button>
           
           <button

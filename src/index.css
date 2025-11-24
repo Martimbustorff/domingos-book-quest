@@ -413,6 +413,35 @@ All colors MUST be HSL.
     border-radius: 50%;
     z-index: -1;
   }
+
+  /* Page-turn animation */
+  @keyframes pageTurn {
+    0% {
+      transform: rotateY(0deg) scale(1);
+      opacity: 1;
+      transform-origin: left center;
+    }
+    50% {
+      transform: rotateY(-45deg) scale(0.98);
+      opacity: 0.7;
+    }
+    100% {
+      transform: rotateY(-90deg) scale(0.95);
+      opacity: 0;
+      transform-origin: left center;
+    }
+  }
+
+  .animate-page-turn {
+    animation: pageTurn 800ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+    perspective: 1200px;
+  }
+
+  /* Container needs preserve-3d for child 3D transforms */
+  .page-turn-container {
+    perspective: 1200px;
+    transform-style: preserve-3d;
+  }
 }
 
 /* ---break---
