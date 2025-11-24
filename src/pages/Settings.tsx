@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useForm } from "react-hook-form";
@@ -307,9 +308,8 @@ const Settings = () => {
               <form onSubmit={passwordForm.handleSubmit(updatePassword)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="password">New Password</Label>
-                  <Input
+                  <PasswordInput
                     id="password"
-                    type="password"
                     {...passwordForm.register("password")}
                     disabled={updating}
                   />
@@ -321,9 +321,8 @@ const Settings = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
+                  <PasswordInput
                     id="confirmPassword"
-                    type="password"
                     {...passwordForm.register("confirmPassword")}
                     disabled={updating}
                   />
