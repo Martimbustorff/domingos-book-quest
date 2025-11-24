@@ -1,10 +1,11 @@
-import { Component, ReactNode } from "react";
+import { Component, ReactNode, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useOAuthProfile } from "@/hooks/useOAuthProfile";
 import Home from "./pages/Home";
+import Onboarding from "./pages/Onboarding";
 import Search from "./pages/Search";
 import Popular from "./pages/Popular";
 import BookDetail from "./pages/BookDetail";
@@ -96,6 +97,28 @@ class ErrorBoundary extends Component<
   }
 }
 
+// Onboarding Check Wrapper
+const OnboardingCheck = ({ children }: { children: ReactNode }) => {
+  const navigate = useNavigate();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const onboardingComplete = localStorage.getItem('onboarding_complete');
+    
+    if (!onboardingComplete) {
+      navigate('/onboarding');
+    }
+    
+    setIsChecking(false);
+  }, [navigate]);
+
+  if (isChecking) {
+    return null;
+  }
+
+  return <>{children}</>;
+};
+
 const AppContent = () => {
   useOAuthProfile();
   
@@ -105,25 +128,30 @@ const AppContent = () => {
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public routes (no onboarding check) */}
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/age-gate" element={<AgeGate />} />
           <Route path="/privacy" element={<Privacy />} />
-          <Route path="/" element={<Home />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="/popular" element={<Popular />} />
-          <Route path="/book/:bookId" element={<BookDetail />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/result" element={<Result />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/parent-dashboard" element={<ParentDashboard />} />
-          <Route path="/child/:childId" element={<ChildProgress />} />
-          <Route path="/accept-invitation/:code" element={<AcceptInvitation />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/contribute" element={<Contribute />} />
+          
+          {/* Protected routes (require onboarding) */}
+          <Route path="/" element={<OnboardingCheck><Home /></OnboardingCheck>} />
+          <Route path="/search" element={<OnboardingCheck><Search /></OnboardingCheck>} />
+          <Route path="/popular" element={<OnboardingCheck><Popular /></OnboardingCheck>} />
+          <Route path="/book/:bookId" element={<OnboardingCheck><BookDetail /></OnboardingCheck>} />
+          <Route path="/quiz" element={<OnboardingCheck><Quiz /></OnboardingCheck>} />
+          <Route path="/result" element={<OnboardingCheck><Result /></OnboardingCheck>} />
+          <Route path="/dashboard" element={<OnboardingCheck><Dashboard /></OnboardingCheck>} />
+          <Route path="/parent-dashboard" element={<OnboardingCheck><ParentDashboard /></OnboardingCheck>} />
+          <Route path="/child/:childId" element={<OnboardingCheck><ChildProgress /></OnboardingCheck>} />
+          <Route path="/accept-invitation/:code" element={<OnboardingCheck><AcceptInvitation /></OnboardingCheck>} />
+          <Route path="/settings" element={<OnboardingCheck><Settings /></OnboardingCheck>} />
+          <Route path="/admin" element={<OnboardingCheck><AdminPanel /></OnboardingCheck>} />
+          <Route path="/contribute" element={<OnboardingCheck><Contribute /></OnboardingCheck>} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
