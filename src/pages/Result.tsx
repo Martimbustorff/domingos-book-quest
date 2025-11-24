@@ -156,7 +156,7 @@ const Result = () => {
 
           {/* Score */}
           <div className="space-y-3 sm:space-y-4">
-            <p className="text-5xl sm:text-6xl font-bold text-primary">
+            <p className="text-5xl sm:text-6xl font-bold text-foreground">
               {score} / {total}
             </p>
             <p className="text-xl sm:text-2xl font-semibold">{message}</p>
@@ -166,7 +166,7 @@ const Result = () => {
           <Card className="p-6 bg-accent/10 border border-accent/20 rounded-lg">
             <p className="text-lg">
               <span className="text-3xl">🪙</span> You earned{" "}
-              <span className="font-bold text-accent text-2xl">+{points} points</span>
+              <span className="font-bold text-foreground text-2xl">+{points} points</span>
             </p>
           </Card>
 

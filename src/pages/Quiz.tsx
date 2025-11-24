@@ -244,7 +244,7 @@ const Quiz = () => {
         <div className="space-y-3">
           <div className="flex justify-between text-sm font-medium">
             <span className="text-muted-foreground">Question {currentQuestion + 1} of {questions.length}</span>
-            <span className="text-primary">Score: {score}</span>
+            <span className="text-foreground font-semibold">Score: {score}</span>
           </div>
           <Progress value={progress} className="h-4" />
         </div>
@@ -301,7 +301,7 @@ const Quiz = () => {
             {selectedAnswer === currentQ.correct_index ? (
               <>
                 <p className="text-3xl sm:text-4xl animate-pop-in">🎉</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">Awesome! You got it!</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">Awesome! You got it!</p>
               </>
             ) : (
               <>

@@ -165,7 +165,7 @@ const Dashboard = () => {
               <Trophy className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold gradient-text">{stats?.total_points || 0}</div>
+              <div className="text-3xl font-bold text-foreground">{stats?.total_points || 0}</div>
               <p className="text-xs text-muted-foreground mt-1">Lifetime earnings</p>
             </CardContent>
           </Card>
@@ -195,7 +195,7 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-              <Flame className="h-4 w-4 text-orange-500" />
+              <Flame className="h-4 w-4 text-accent-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{stats?.current_streak || 0} 🔥</div>
@@ -311,7 +311,7 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold gradient-text">
+                      <p className="text-2xl font-bold text-foreground">
                         {quiz.score}/{quiz.total_questions}
                       </p>
                       <p className="text-xs text-muted-foreground">+{quiz.points_earned} pts</p>

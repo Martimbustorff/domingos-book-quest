@@ -44,7 +44,7 @@ const ChildCard = ({
               <Trophy className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-bold text-foreground">
                 {totalPoints.toLocaleString()}
               </div>
               <div className="text-xs text-muted-foreground">Points</div>
@@ -56,7 +56,7 @@ const ChildCard = ({
               <BookOpen className="h-4 w-4 text-accent" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-accent">
+              <div className="text-2xl font-bold text-foreground">
                 {quizzesCompleted}
               </div>
               <div className="text-xs text-muted-foreground">Quizzes</div>
