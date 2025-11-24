@@ -17,7 +17,13 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/reset-password`;
+      // Use Netlify domain for production, current origin for development
+      const redirectUrl = window.location.hostname.includes('lovable.app')
+        ? 'https://domingosbookquiz.netlify.app/reset-password'
+        : `${window.location.origin}/reset-password`;
+      
+      console.log('Sending password reset to:', email);
+      console.log('Redirect URL:', redirectUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
@@ -28,6 +34,7 @@ const ForgotPassword = () => {
       setEmailSent(true);
       toast.success("Check your email for the password reset link!");
     } catch (error: any) {
+      console.error('Password reset error:', error);
       toast.error(error.message || "Failed to send reset email");
     } finally {
       setLoading(false);
@@ -84,6 +91,9 @@ const ForgotPassword = () => {
               </p>
               <p className="text-xs text-muted-foreground mt-2">
                 Don't see the email? Check your spam folder.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                The link expires in 1 hour and can only be used once.
               </p>
             </div>
             <Button
