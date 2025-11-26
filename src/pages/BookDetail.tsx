@@ -71,9 +71,7 @@ const BookDetail = () => {
     );
   };
 
-  const handleWatchVideo = () => {
-    navigate(`/video/${bookId}?youtube=${videoData.videoId}`);
-  };
+  // Video feature removed - route doesn't exist
 
   if (!book) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -115,18 +113,6 @@ const BookDetail = () => {
           <p className="text-muted-foreground">Have you already read this story?</p>
         </Card>
 
-        {/* Video Option */}
-        {videoData?.hasVideo && (
-          <Button
-            size="lg"
-            variant="accent"
-            className="w-full h-14 text-lg rounded-2xl quiz-button"
-            onClick={handleWatchVideo}
-          >
-            <Play className="mr-2 h-5 w-5" />
-            🎥 Watch a video first
-          </Button>
-        )}
 
         {/* Content Quality Warning */}
         {quizQuality && quizQuality.content_quality_score && quizQuality.content_quality_score < 70 && (

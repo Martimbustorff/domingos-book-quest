@@ -240,7 +240,7 @@ Return ONLY valid JSON with this structure:
     }
   }
 
-  // Update book with AI-estimated age range if available
+  // Update book with AI-estimated age range and enrichment status
   if (aiEnrichment?.age_min && aiEnrichment?.age_max) {
     try {
       await supabase
@@ -248,12 +248,27 @@ Return ONLY valid JSON with this structure:
         .update({
           age_min: aiEnrichment.age_min,
           age_max: aiEnrichment.age_max,
+          enrichment_status: "complete",
+          enriched_at: new Date().toISOString(),
         })
         .eq("id", bookId);
       console.log(`[ENRICH] ✓ Age range updated: ${aiEnrichment.age_min}-${aiEnrichment.age_max}`);
     } catch (error) {
       console.error(`[ENRICH] Failed to update age range:`, error);
       result.errors?.push("update_age_range: " + (error as Error).message);
+    }
+  } else {
+    // Mark as complete even without age range if we tried to enrich
+    try {
+      await supabase
+        .from("books")
+        .update({
+          enrichment_status: "complete",
+          enriched_at: new Date().toISOString(),
+        })
+        .eq("id", bookId);
+    } catch (error) {
+      console.error(`[ENRICH] Failed to update enrichment status:`, error);
     }
   }
 

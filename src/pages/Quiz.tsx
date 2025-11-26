@@ -181,7 +181,7 @@ const Quiz = () => {
       setSelectedAnswer(null);
       setShowFeedback(false);
     } else {
-      // Record completion event and increment book popularity
+      // Record completion event, save quiz history, and track question responses
       try {
         // Always increment book popularity
         await supabase.rpc("increment_book_popularity", { p_book_id: bookId });
@@ -196,6 +196,47 @@ const Quiz = () => {
         });
 
         await supabase.from("events").insert(eventData);
+
+        // Save quiz history and question responses for authenticated users
+        if (userId) {
+          const pointsEarned = Math.round((score / questions.length) * 100);
+          
+          const { data: quizHistoryRecord, error: historyError } = await supabase
+            .from("quiz_history")
+            .insert({
+              user_id: userId,
+              book_id: bookId,
+              score,
+              total_questions: questions.length,
+              difficulty,
+              points_earned: pointsEarned,
+            })
+            .select()
+            .single();
+
+          if (historyError) {
+            console.error("Failed to save quiz history:", historyError);
+          } else if (quizHistoryRecord) {
+            // Save individual question responses
+            const questionResponses = questions.map((q, index) => ({
+              quiz_history_id: quizHistoryRecord.id,
+              question_index: index,
+              question_text: q.text,
+              selected_answer_index: answers[index] ? q.correct_index : (answers[index] === false ? -1 : -1),
+              correct_answer_index: q.correct_index,
+              is_correct: answers[index] || false,
+              time_spent_ms: null,
+            }));
+
+            const { error: responsesError } = await supabase
+              .from("quiz_question_responses")
+              .insert(questionResponses);
+
+            if (responsesError) {
+              console.error("Failed to save question responses:", responsesError);
+            }
+          }
+        }
       } catch (error) {
         console.error("Failed to record quiz completion:", error);
         // Don't show error to user for analytics failures

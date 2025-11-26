@@ -244,34 +244,7 @@ serve(async (req) => {
 
     // Priority 4: Skip duplicate user content check (already done as Priority 1)
 
-    // Priority 5: Try Wikipedia
-    if (!bookDescription) {
-      try {
-        const wikiQuery = `${book.title} ${book.author || ''} children's book`;
-        console.log(`[4/5] Searching Wikipedia for: ${wikiQuery}`);
-        
-        const wikiResponse = await fetchWithTimeout(
-          `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro=true&explaintext=true&titles=${encodeURIComponent(wikiQuery)}&origin=*`,
-          10000
-        );
-        
-        if (wikiResponse.ok) {
-          const wikiData = await wikiResponse.json();
-          const pages = wikiData.query?.pages;
-          const firstPage = pages ? Object.values(pages)[0] as any : null;
-          
-          if (firstPage?.extract && firstPage.pageid !== -1) {
-            bookDescription = firstPage.extract;
-            contentSource = "wikipedia";
-            console.log(`✓ Wikipedia: Found description (${bookDescription.length} chars)`);
-          }
-        }
-      } catch (error) {
-        console.error("Wikipedia API failed:", error);
-      }
-    }
-
-    // Priority 5: Use Lovable AI web search as LAST RESORT
+    // Priority 4: Use Lovable AI web search as LAST RESORT
     if (!bookDescription) {
       try {
         console.log(`[5/5] Using AI web search as last resort...`);

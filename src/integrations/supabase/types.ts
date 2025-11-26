@@ -110,6 +110,8 @@ export type Database = {
           author: string | null
           cover_url: string | null
           created_at: string
+          enriched_at: string | null
+          enrichment_status: string | null
           id: string
           language: string | null
           open_library_id: string | null
@@ -122,6 +124,8 @@ export type Database = {
           author?: string | null
           cover_url?: string | null
           created_at?: string
+          enriched_at?: string | null
+          enrichment_status?: string | null
           id?: string
           language?: string | null
           open_library_id?: string | null
@@ -134,6 +138,8 @@ export type Database = {
           author?: string | null
           cover_url?: string | null
           created_at?: string
+          enriched_at?: string | null
+          enrichment_status?: string | null
           id?: string
           language?: string | null
           open_library_id?: string | null
@@ -309,6 +315,50 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_question_responses: {
+        Row: {
+          correct_answer_index: number
+          created_at: string
+          id: string
+          is_correct: boolean
+          question_index: number
+          question_text: string
+          quiz_history_id: string
+          selected_answer_index: number
+          time_spent_ms: number | null
+        }
+        Insert: {
+          correct_answer_index: number
+          created_at?: string
+          id?: string
+          is_correct: boolean
+          question_index: number
+          question_text: string
+          quiz_history_id: string
+          selected_answer_index: number
+          time_spent_ms?: number | null
+        }
+        Update: {
+          correct_answer_index?: number
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          question_index?: number
+          question_text?: string
+          quiz_history_id?: string
+          selected_answer_index?: number
+          time_spent_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_question_responses_quiz_history_id_fkey"
+            columns: ["quiz_history_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_history"
             referencedColumns: ["id"]
           },
         ]

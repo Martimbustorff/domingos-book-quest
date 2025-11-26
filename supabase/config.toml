@@ -1,8 +1,5 @@
 project_id = "hoxubepipusimfbkzbxr"
 
-[functions.fetch-book-covers]
-verify_jwt = false
-
 [functions.search-books]
 verify_jwt = false
 
@@ -10,13 +7,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-quiz]
-verify_jwt = true
-
-[functions.lovable-ai-search]
-verify_jwt = true
-
-[functions.remove-background]
-verify_jwt = true
+verify_jwt = false
 
 [functions.enrich-book-data]
 verify_jwt = true

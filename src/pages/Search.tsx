@@ -126,16 +126,9 @@ const Search = () => {
         )}
 
         {searchQuery && !isLoading && searchResults?.length === 0 && (
-          <Card className="p-12 text-center space-y-6">
+          <Card className="p-12 text-center space-y-4">
             <p className="text-xl font-medium">Can't find your book? 🤔</p>
-            <Button
-              variant="outline"
-              size="lg"
-              className="rounded-[24px] h-14 text-lg"
-              onClick={() => navigate("/add-book")}
-            >
-              Add it manually
-            </Button>
+            <p className="text-muted-foreground">Try different search terms or check the spelling</p>
           </Card>
         )}
       </div>

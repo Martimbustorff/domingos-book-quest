@@ -9,11 +9,15 @@ import { PopularBook } from "@/types";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 
+const INITIAL_LOAD = 20;
+const LOAD_MORE_AMOUNT = 20;
+
 const Popular = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [displayCount, setDisplayCount] = useState(INITIAL_LOAD);
 
-  const { data: popularBooks, isLoading } = useQuery({
+  const { data: allPopularBooks, isLoading } = useQuery({
     queryKey: ["popular-books"],
     queryFn: async () => {
       // The popular_books_dynamic view already filters for age-appropriate books
@@ -31,7 +35,7 @@ const Popular = () => {
           .from("books")
           .select("*")
           .order("created_at", { ascending: false })
-          .limit(20);
+          .limit(50);
         
         return fallback?.map((book, idx) => ({
           ...book,
@@ -48,14 +52,22 @@ const Popular = () => {
   });
 
   const searchedBooks = useMemo(() => {
-    if (!popularBooks || !searchQuery) return popularBooks;
+    if (!allPopularBooks || !searchQuery) return allPopularBooks;
     
     const query = searchQuery.toLowerCase();
-    return popularBooks.filter((book: PopularBook) => 
+    return allPopularBooks.filter((book: PopularBook) => 
       book.title?.toLowerCase().includes(query) ||
       book.author?.toLowerCase().includes(query)
     );
-  }, [popularBooks, searchQuery]);
+  }, [allPopularBooks, searchQuery]);
+
+  // Apply pagination only when not searching
+  const popularBooks = useMemo(() => {
+    if (searchQuery.trim()) return searchedBooks;
+    return searchedBooks?.slice(0, displayCount);
+  }, [searchedBooks, displayCount, searchQuery]);
+
+  const hasMore = !searchQuery.trim() && displayCount < (searchedBooks?.length || 0);
 
   return (
     <div className="min-h-screen p-4 sm:p-6 pb-24">
@@ -90,10 +102,11 @@ const Popular = () => {
           </div>
 
           {/* Book Count */}
-          {!isLoading && searchedBooks && (
+          {!isLoading && popularBooks && (
             <p className="text-sm text-muted-foreground px-2">
-              Showing <span className="font-semibold text-foreground">{searchedBooks.length}</span> 
-              {searchQuery ? ' matching' : ''} children's book{searchedBooks.length !== 1 ? 's' : ''}
+              Showing <span className="font-semibold text-foreground">{popularBooks.length}</span> 
+              {searchQuery ? ' matching' : ''} children's book{popularBooks.length !== 1 ? 's' : ''}
+              {hasMore && ` (${searchedBooks?.length || 0} total)`}
             </p>
           )}
         </div>
@@ -101,9 +114,9 @@ const Popular = () => {
         {/* Books List */}
         {isLoading && <BookListSkeleton count={20} />}
 
-        {searchedBooks && searchedBooks.length > 0 && (
+        {popularBooks && popularBooks.length > 0 && (
           <div className="space-y-4 sm:space-y-6">
-            {searchedBooks.map((book: PopularBook) => {
+            {popularBooks.map((book: PopularBook) => {
               return (
                 <Card
                   key={book.book_id}
@@ -144,12 +157,28 @@ const Popular = () => {
           </div>
         )}
 
-        {!isLoading && (!searchedBooks || searchedBooks.length === 0) && (
+        {!isLoading && (!popularBooks || popularBooks.length === 0) && (
           <Card className="p-12 text-center">
             <p className="text-xl text-muted-foreground font-medium">
-              No popular books available yet. Check back soon! 📚
+              {searchQuery 
+                ? `No books found matching "${searchQuery}"`
+                : "No popular books available yet. Check back soon! 📚"}
             </p>
           </Card>
+        )}
+
+        {/* Load More Button */}
+        {hasMore && !isLoading && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setDisplayCount(prev => prev + LOAD_MORE_AMOUNT)}
+              className="rounded-[24px]"
+            >
+              Load More Books
+            </Button>
+          </div>
         )}
       </div>
     </div>

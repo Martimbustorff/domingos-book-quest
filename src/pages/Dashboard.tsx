@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { Trophy, Star, Book, Flame, TrendingUp, Award, ArrowLeft } from "lucide-react";
 import { LoadingState } from "@/components/shared";
 import { UserStats } from "@/types";
+import { useQuery } from "@tanstack/react-query";
 
 interface Achievement {
   id: string;
@@ -33,34 +33,25 @@ interface QuizHistoryItem {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
+  // Fetch user stats
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["user-stats"],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         navigate("/login");
-        return;
+        return null;
       }
 
-      // Fetch user stats
-      const { data: statsData, error: statsError } = await supabase
+      const { data: statsData, error } = await supabase
         .from("user_stats")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (statsError) throw statsError;
+      if (error) throw error;
 
-      // If no stats exist, create initial record
       if (!statsData) {
         const { data: newStats, error: createError } = await supabase
           .from("user_stats")
@@ -69,12 +60,20 @@ const Dashboard = () => {
           .single();
 
         if (createError) throw createError;
-        setStats(newStats);
-      } else {
-        setStats(statsData);
+        return newStats;
       }
 
-      // Fetch all achievements with user's earned status
+      return statsData;
+    },
+  });
+
+  // Fetch achievements
+  const { data: achievements = [] } = useQuery({
+    queryKey: ["achievements"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
       const { data: allAchievements, error: achievementsError } = await supabase
         .from("achievements")
         .select("*")
@@ -82,7 +81,6 @@ const Dashboard = () => {
 
       if (achievementsError) throw achievementsError;
 
-      // Fetch user's earned achievements
       const { data: userAchievements, error: userAchievementsError } = await supabase
         .from("user_achievements")
         .select("achievement_id, earned_at")
@@ -90,20 +88,25 @@ const Dashboard = () => {
 
       if (userAchievementsError) throw userAchievementsError;
 
-      // Merge achievements data
       const earnedMap = new Map(
         userAchievements?.map(ua => [ua.achievement_id, ua.earned_at]) || []
       );
 
-      const mergedAchievements = allAchievements?.map(a => ({
+      return allAchievements?.map(a => ({
         ...a,
         earned_at: earnedMap.get(a.id)
       })) || [];
+    },
+  });
 
-      setAchievements(mergedAchievements);
+  // Fetch quiz history
+  const { data: quizHistory = [] } = useQuery({
+    queryKey: ["quiz-history"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
 
-      // Fetch recent quiz history
-      const { data: historyData, error: historyError } = await supabase
+      const { data, error } = await supabase
         .from("quiz_history")
         .select(`
           id,
@@ -121,21 +124,12 @@ const Dashboard = () => {
         .order("completed_at", { ascending: false })
         .limit(10);
 
-      if (historyError) throw historyError;
-      setQuizHistory(historyData || []);
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
-    } catch (error: any) {
-      toast({
-        title: "Error loading dashboard",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (statsLoading) {
     return <LoadingState fullScreen message="Loading your dashboard..." />;
   }
 
