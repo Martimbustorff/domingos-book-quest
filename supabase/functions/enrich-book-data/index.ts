@@ -150,75 +150,37 @@ async function enrichBookData(
     }
   }
 
-  // Use Lovable AI with Gemini Flash for web search and summary
+  // Use Lovable AI with Gemini Pro for comprehensive enrichment (age, story, characters, quiz topics)
+  let aiEnrichment: any = null;
   if (!description) {
     try {
-      console.log(`[ENRICH] Trying Lovable AI web search for description`);
+      console.log(`[ENRICH] Using Lovable AI for comprehensive book analysis`);
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       if (!LOVABLE_API_KEY) {
         throw new Error("LOVABLE_API_KEY not configured");
       }
 
-      const searchPrompt = `Find a detailed plot summary and description of the children's book "${bookTitle}"${bookAuthor ? ` by ${bookAuthor}` : ""}. Include key themes, characters, and age appropriateness. Be comprehensive but concise (200-300 words).`;
+      const enrichmentPrompt = `Analyze the children's book: "${bookTitle}"${bookAuthor ? ` by ${bookAuthor}` : ""}
 
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            {
-              role: "system",
-              content: "You are a children's book research assistant. Provide accurate, educational summaries of children's books based on available information."
-            },
-            {
-              role: "user",
-              content: searchPrompt
-            }
-          ],
-        }),
-      });
+Provide a JSON response with:
+1. age_min and age_max: Estimate the appropriate age range (choose from: 5-6, 7-8, 9-10, 11-12)
+2. summary: A detailed 300-400 word plot summary including:
+   - Main characters with names and personalities
+   - Key plot events in sequence
+   - Important objects, locations, settings
+   - Themes and lessons
+   - How the story resolves
+3. key_characters: Array of main characters with brief descriptions (e.g., ["Harry Potter: an 11-year-old wizard", "Hermione Granger: intelligent and studious friend"])
+4. quiz_topics: Array of 5-10 specific story details that would make good quiz questions - NOT generic (e.g., ["color of the giant peach", "number of aunts James lives with", "name of the magical item"])
 
-      if (aiResponse.ok) {
-        const aiData = await aiResponse.json();
-        description = aiData.choices?.[0]?.message?.content;
-        if (description) {
-          result.sources_used.push("lovable_ai_gemini_flash");
-          console.log(`[ENRICH] ✓ Description generated via Lovable AI Gemini Flash (${description.length} chars)`);
-        }
-      } else {
-        const errorText = await aiResponse.text();
-        console.error(`[ENRICH] Lovable AI error:`, errorText);
-        result.errors?.push("lovable_ai: " + errorText);
-      }
-    } catch (error) {
-      console.error(`[ENRICH] Lovable AI error:`, error);
-      result.errors?.push("lovable_ai: " + (error as Error).message);
-    }
-  }
-
-  // Last resort: Use Lovable AI Deep Research with Gemini Pro
-  if (!description) {
-    try {
-      console.log(`[ENRICH] Trying Lovable AI Deep Research (Gemini Pro) as last resort`);
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        throw new Error("LOVABLE_API_KEY not configured");
-      }
-
-      const deepResearchPrompt = `Conduct comprehensive research on the children's book "${bookTitle}"${bookAuthor ? ` by ${bookAuthor}` : ""}. 
-
-Research and provide:
-1. Plot summary and main themes
-2. Key characters and their roles
-3. Age appropriateness and reading level
-4. Educational value and lessons
-5. Critical reception and popularity
-
-Synthesize all available information into a comprehensive but concise description (300-400 words).`;
+Return ONLY valid JSON with this structure:
+{
+  "age_min": number,
+  "age_max": number,
+  "summary": "detailed summary",
+  "key_characters": ["character 1: description", "character 2: description"],
+  "quiz_topics": ["specific detail 1", "specific detail 2"]
+}`;
 
       const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -231,11 +193,11 @@ Synthesize all available information into a comprehensive but concise descriptio
           messages: [
             {
               role: "system",
-              content: "You are an expert children's literature researcher. Conduct thorough research and provide comprehensive, accurate information about children's books. Synthesize information from multiple perspectives."
+              content: "You are a children's literature expert who analyzes books to create detailed summaries and age-appropriate assessments. Always return valid JSON."
             },
             {
               role: "user",
-              content: deepResearchPrompt
+              content: enrichmentPrompt
             }
           ],
         }),
@@ -243,19 +205,55 @@ Synthesize all available information into a comprehensive but concise descriptio
 
       if (aiResponse.ok) {
         const aiData = await aiResponse.json();
-        description = aiData.choices?.[0]?.message?.content;
-        if (description) {
-          result.sources_used.push("lovable_ai_gemini_pro_deep_research");
-          console.log(`[ENRICH] ✓ Description generated via Lovable AI Deep Research (${description.length} chars)`);
+        const aiContent = aiData.choices?.[0]?.message?.content?.trim();
+        
+        if (aiContent) {
+          try {
+            // Extract JSON from the response (may be wrapped in markdown)
+            const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              aiEnrichment = JSON.parse(jsonMatch[0]);
+              description = aiEnrichment.summary;
+              result.sources_used.push("lovable_ai_gemini_pro_enriched");
+              console.log(`[ENRICH] ✓ Got AI enrichment: age ${aiEnrichment.age_min}-${aiEnrichment.age_max}, ${aiEnrichment.key_characters?.length || 0} characters, ${aiEnrichment.quiz_topics?.length || 0} topics`);
+            } else {
+              // Fallback: use content as description
+              description = aiContent;
+              result.sources_used.push("lovable_ai_gemini_pro");
+              console.log(`[ENRICH] ✓ Got AI description (no structured data)`);
+            }
+          } catch (parseError) {
+            console.error(`[ENRICH] Failed to parse AI JSON:`, parseError);
+            // Fallback: use content as description
+            description = aiContent;
+            result.sources_used.push("lovable_ai_gemini_pro");
+          }
         }
       } else {
         const errorText = await aiResponse.text();
-        console.error(`[ENRICH] Lovable AI Deep Research error:`, errorText);
-        result.errors?.push("lovable_ai_deep_research: " + errorText);
+        console.error(`[ENRICH] Lovable AI error:`, errorText);
+        result.errors?.push("lovable_ai: " + errorText);
       }
     } catch (error) {
-      console.error(`[ENRICH] Lovable AI Deep Research error:`, error);
-      result.errors?.push("lovable_ai_deep_research: " + (error as Error).message);
+      console.error(`[ENRICH] Lovable AI error:`, error);
+      result.errors?.push("lovable_ai: " + (error as Error).message);
+    }
+  }
+
+  // Update book with AI-estimated age range if available
+  if (aiEnrichment?.age_min && aiEnrichment?.age_max) {
+    try {
+      await supabase
+        .from("books")
+        .update({
+          age_min: aiEnrichment.age_min,
+          age_max: aiEnrichment.age_max,
+        })
+        .eq("id", bookId);
+      console.log(`[ENRICH] ✓ Age range updated: ${aiEnrichment.age_min}-${aiEnrichment.age_max}`);
+    } catch (error) {
+      console.error(`[ENRICH] Failed to update age range:`, error);
+      result.errors?.push("update_age_range: " + (error as Error).message);
     }
   }
 
@@ -269,16 +267,26 @@ Synthesize all available information into a comprehensive but concise descriptio
         .eq("book_id", bookId)
         .maybeSingle();
 
+      const contentData: any = {
+        description,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add AI enrichment data if available
+      if (aiEnrichment?.key_characters) {
+        contentData.key_characters = aiEnrichment.key_characters;
+      }
+      if (aiEnrichment?.quiz_topics) {
+        contentData.subjects = aiEnrichment.quiz_topics;
+      }
+
       if (existingContent) {
         // Update existing content
         await supabase
           .from("book_content")
-          .update({
-            description,
-            updated_at: new Date().toISOString(),
-          })
+          .update(contentData)
           .eq("id", existingContent.id);
-        console.log(`[ENRICH] ✓ Description updated in book_content`);
+        console.log(`[ENRICH] ✓ Book content updated with AI enrichment`);
       } else {
         // Create new content - use a system user ID (first admin or fallback)
         const { data: adminUser } = await supabase
@@ -294,13 +302,13 @@ Synthesize all available information into a comprehensive but concise descriptio
           .from("book_content")
           .insert({
             book_id: bookId,
-            description,
+            ...contentData,
             submitted_by: submittedBy,
             approved: true,
             approved_by: submittedBy,
             approved_at: new Date().toISOString(),
           });
-        console.log(`[ENRICH] ✓ Description inserted into book_content`);
+        console.log(`[ENRICH] ✓ Book content inserted with AI enrichment`);
       }
       result.description = description;
     } catch (error) {
