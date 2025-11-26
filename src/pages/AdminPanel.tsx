@@ -157,8 +157,9 @@ const AdminPanel = () => {
   };
 
   const bulkDeleteNonChildrenBooks = async () => {
+    // Include books with enrichment_status = 'not_for_children' or age_max > 12
     const nonChildrenBooks = allBooksForAdmin.filter(b => 
-      b.age_max === null || b.age_max > 12
+      b.enrichment_status === 'not_for_children' || b.age_max === null || b.age_max > 12
     );
     
     if (nonChildrenBooks.length === 0) {
@@ -166,7 +167,9 @@ const AdminPanel = () => {
       return;
     }
     
-    if (!confirm(`This will delete ${nonChildrenBooks.length} non-children books and all their related data. Are you sure?`)) {
+    if (!confirm(
+      `This will delete ${nonChildrenBooks.length} non-children books (including ${allBooksForAdmin.filter(b => b.enrichment_status === 'not_for_children').length} flagged by AI) and all their related data. Are you sure?`
+    )) {
       return;
     }
     
@@ -1115,7 +1118,7 @@ const AdminPanel = () => {
                 </div>
 
                 {/* Book Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 py-4">
                   <Card className="glass-card">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium">Total Books</CardTitle>
@@ -1151,6 +1154,19 @@ const AdminPanel = () => {
                         {allBooksForAdmin.length > 0
                           ? Math.round((allBooksForAdmin.filter(b => b.quiz_count > 0).length / allBooksForAdmin.length) * 100)
                           : 0}% have quizzes
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card border-destructive/20">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-destructive">Not For Children</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-destructive">
+                        {allBooksForAdmin.filter(b => b.enrichment_status === 'not_for_children' || b.age_max > 12).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Flagged by AI
                       </p>
                     </CardContent>
                   </Card>

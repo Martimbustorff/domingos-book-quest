@@ -160,23 +160,35 @@ async function enrichBookData(
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const enrichmentPrompt = `Analyze the children's book: "${bookTitle}"${bookAuthor ? ` by ${bookAuthor}` : ""}
+    const enrichmentPrompt = `Analyze the book: "${bookTitle}"${bookAuthor ? ` by ${bookAuthor}` : ""}
 
 Provide a JSON response with:
-1. age_min and age_max: Estimate the appropriate age range (choose from: 5-6, 7-8, 9-10, 11-12)
-2. summary: A detailed 300-400 word plot summary including:
+1. is_appropriate_for_children: Boolean - Is this appropriate for children ages 5-12? Consider:
+   - Adult themes (violence, horror, sexuality, drug use)
+   - Complex philosophical or existential content
+   - Books marketed for teens/adults (age 14+)
+   - Technical/academic manuals
+   Examples of INAPPROPRIATE: Shakespeare, Stephen King, Kafka, adult literary fiction, technical manuals
+   Examples of APPROPRIATE: Picture books, chapter books, middle grade novels
+
+2. age_min and age_max: ONLY if appropriate for children, estimate the age range (choose from: 5-6, 7-8, 9-10, 11-12)
+
+3. summary: A detailed 300-400 word plot summary including:
    - Main characters with names and personalities
    - Key plot events in sequence
    - Important objects, locations, settings
    - Themes and lessons
    - How the story resolves
-3. key_characters: Array of main characters with brief descriptions (e.g., ["Harry Potter: an 11-year-old wizard", "Hermione Granger: intelligent and studious friend"])
-4. quiz_topics: Array of 5-10 specific story details that would make good quiz questions - NOT generic (e.g., ["color of the giant peach", "number of aunts James lives with", "name of the magical item"])
+
+4. key_characters: Array of main characters with brief descriptions (e.g., ["Harry Potter: an 11-year-old wizard", "Hermione Granger: intelligent and studious friend"])
+
+5. quiz_topics: Array of 5-10 specific story details that would make good quiz questions - NOT generic (e.g., ["color of the giant peach", "number of aunts James lives with", "name of the magical item"])
 
 Return ONLY valid JSON with this structure:
 {
-  "age_min": number,
-  "age_max": number,
+  "is_appropriate_for_children": boolean,
+  "age_min": number | null,
+  "age_max": number | null,
   "summary": "detailed summary",
   "key_characters": ["character 1: description", "character 2: description"],
   "quiz_topics": ["specific detail 1", "specific detail 2"]
@@ -246,7 +258,27 @@ Return ONLY valid JSON with this structure:
     result.errors?.push("lovable_ai: " + (error as Error).message);
   }
 
-  // Update book with AI-estimated age range and enrichment status
+  // Check if book is appropriate for children
+  if (aiEnrichment?.is_appropriate_for_children === false) {
+    try {
+      // Mark as not for children and DO NOT update age ranges
+      await supabase
+        .from("books")
+        .update({
+          enrichment_status: "not_for_children",
+          enriched_at: new Date().toISOString(),
+        })
+        .eq("id", bookId);
+      console.log(`[ENRICH] ✗ Book marked as NOT for children - will be flagged for deletion`);
+      result.errors?.push("not_appropriate_for_children");
+      return result;
+    } catch (error) {
+      console.error(`[ENRICH] Failed to update enrichment status:`, error);
+      result.errors?.push("update_enrichment_status: " + (error as Error).message);
+    }
+  }
+
+  // Update book with AI-estimated age range and enrichment status (only for appropriate books)
   if (aiEnrichment?.age_min && aiEnrichment?.age_max) {
     try {
       await supabase
