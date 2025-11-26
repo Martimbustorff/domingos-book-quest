@@ -193,29 +193,44 @@ const AdminPanel = () => {
   };
 
   const enrichBooksWithMissingData = async () => {
+    // Target books with enrichment_status = 'pending' or missing AI data
     const booksNeedingEnrichment = allBooksForAdmin.filter(
-      (b) => !b.cover_url || b.age_min === null || b.age_max === null
+      (b) => b.enrichment_status === 'pending' || !b.enriched_at || b.age_min === null
     );
 
     if (booksNeedingEnrichment.length === 0) {
-      toast.info("All books already have complete data!");
+      toast.info("All books already enriched with AI data!");
       return;
     }
 
+    // Prioritize books with quiz activity
+    const { data: booksWithQuizzes } = await supabase
+      .from('events')
+      .select('book_id')
+      .eq('event_type', 'quiz_completed')
+      .in('book_id', booksNeedingEnrichment.map(b => b.id));
+    
+    const priorityBookIds = new Set(booksWithQuizzes?.map(e => e.book_id) || []);
+    const sortedBooks = booksNeedingEnrichment.sort((a, b) => {
+      const aHasQuizzes = priorityBookIds.has(a.id) ? 1 : 0;
+      const bHasQuizzes = priorityBookIds.has(b.id) ? 1 : 0;
+      return bHasQuizzes - aHasQuizzes;
+    });
+
     if (!confirm(
-      `This will enrich ${booksNeedingEnrichment.length} books with missing covers or descriptions. ` +
-      `This process uses multiple data sources (Google Books, Open Library, AI) and may take several minutes. Continue?`
+      `This will run AI enrichment for ${sortedBooks.length} books to add age ranges, characters, and quiz topics. ` +
+      `Books with quiz activity will be prioritized. This may take 10-15 minutes. Continue?`
     )) {
       return;
     }
 
     setEnrichingBooks(true);
-    toast.info(`Starting enrichment for ${booksNeedingEnrichment.length} books...`);
+    toast.info(`Starting AI enrichment for ${sortedBooks.length} books (prioritizing books with quizzes)...`);
 
     try {
       const { data, error } = await supabase.functions.invoke("enrich-book-data", {
         body: {
-          book_ids: booksNeedingEnrichment.map((b) => b.id),
+          book_ids: sortedBooks.map((b) => b.id),
         },
       });
 

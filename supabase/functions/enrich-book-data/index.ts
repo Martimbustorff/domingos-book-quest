@@ -151,16 +151,16 @@ async function enrichBookData(
   }
 
   // Use Lovable AI with Gemini Pro for comprehensive enrichment (age, story, characters, quiz topics)
+  // ALWAYS run AI enrichment to get age_min, age_max, key_characters, and quiz_topics
   let aiEnrichment: any = null;
-  if (!description) {
-    try {
-      console.log(`[ENRICH] Using Lovable AI for comprehensive book analysis`);
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        throw new Error("LOVABLE_API_KEY not configured");
-      }
+  try {
+    console.log(`[ENRICH] Using Lovable AI for comprehensive book analysis (always runs)`);
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY not configured");
+    }
 
-      const enrichmentPrompt = `Analyze the children's book: "${bookTitle}"${bookAuthor ? ` by ${bookAuthor}` : ""}
+    const enrichmentPrompt = `Analyze the children's book: "${bookTitle}"${bookAuthor ? ` by ${bookAuthor}` : ""}
 
 Provide a JSON response with:
 1. age_min and age_max: Estimate the appropriate age range (choose from: 5-6, 7-8, 9-10, 11-12)
@@ -182,62 +182,68 @@ Return ONLY valid JSON with this structure:
   "quiz_topics": ["specific detail 1", "specific detail 2"]
 }`;
 
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
-          messages: [
-            {
-              role: "system",
-              content: "You are a children's literature expert who analyzes books to create detailed summaries and age-appropriate assessments. Always return valid JSON."
-            },
-            {
-              role: "user",
-              content: enrichmentPrompt
-            }
-          ],
-        }),
-      });
-
-      if (aiResponse.ok) {
-        const aiData = await aiResponse.json();
-        const aiContent = aiData.choices?.[0]?.message?.content?.trim();
-        
-        if (aiContent) {
-          try {
-            // Extract JSON from the response (may be wrapped in markdown)
-            const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              aiEnrichment = JSON.parse(jsonMatch[0]);
-              description = aiEnrichment.summary;
-              result.sources_used.push("lovable_ai_gemini_pro_enriched");
-              console.log(`[ENRICH] ✓ Got AI enrichment: age ${aiEnrichment.age_min}-${aiEnrichment.age_max}, ${aiEnrichment.key_characters?.length || 0} characters, ${aiEnrichment.quiz_topics?.length || 0} topics`);
-            } else {
-              // Fallback: use content as description
-              description = aiContent;
-              result.sources_used.push("lovable_ai_gemini_pro");
-              console.log(`[ENRICH] ✓ Got AI description (no structured data)`);
-            }
-          } catch (parseError) {
-            console.error(`[ENRICH] Failed to parse AI JSON:`, parseError);
-            // Fallback: use content as description
-            description = aiContent;
-            result.sources_used.push("lovable_ai_gemini_pro");
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-pro",
+        messages: [
+          {
+            role: "system",
+            content: "You are a children's literature expert who analyzes books to create detailed summaries and age-appropriate assessments. Always return valid JSON."
+          },
+          {
+            role: "user",
+            content: enrichmentPrompt
           }
+        ],
+      }),
+    });
+
+    if (aiResponse.ok) {
+      const aiData = await aiResponse.json();
+      const aiContent = aiData.choices?.[0]?.message?.content?.trim();
+      
+      if (aiContent) {
+        try {
+          // Extract JSON from the response (may be wrapped in markdown)
+          const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            aiEnrichment = JSON.parse(jsonMatch[0]);
+            // Use AI summary if we don't have description yet, otherwise keep existing
+            if (!description) {
+              description = aiEnrichment.summary;
+            }
+            result.sources_used.push("lovable_ai_gemini_pro_enriched");
+            console.log(`[ENRICH] ✓ Got AI enrichment: age ${aiEnrichment.age_min}-${aiEnrichment.age_max}, ${aiEnrichment.key_characters?.length || 0} characters, ${aiEnrichment.quiz_topics?.length || 0} topics`);
+          } else {
+            // Fallback: use content as description if we don't have one
+            if (!description) {
+              description = aiContent;
+            }
+            result.sources_used.push("lovable_ai_gemini_pro");
+            console.log(`[ENRICH] ✓ Got AI description (no structured data)`);
+          }
+        } catch (parseError) {
+          console.error(`[ENRICH] Failed to parse AI JSON:`, parseError);
+          // Fallback: use content as description if we don't have one
+          if (!description) {
+            description = aiContent;
+          }
+          result.sources_used.push("lovable_ai_gemini_pro");
         }
-      } else {
-        const errorText = await aiResponse.text();
-        console.error(`[ENRICH] Lovable AI error:`, errorText);
-        result.errors?.push("lovable_ai: " + errorText);
       }
-    } catch (error) {
-      console.error(`[ENRICH] Lovable AI error:`, error);
-      result.errors?.push("lovable_ai: " + (error as Error).message);
+    } else {
+      const errorText = await aiResponse.text();
+      console.error(`[ENRICH] Lovable AI error:`, errorText);
+      result.errors?.push("lovable_ai: " + errorText);
     }
+  } catch (error) {
+    console.error(`[ENRICH] Lovable AI error:`, error);
+    result.errors?.push("lovable_ai: " + (error as Error).message);
   }
 
   // Update book with AI-estimated age range and enrichment status

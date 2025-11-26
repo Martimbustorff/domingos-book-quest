@@ -87,19 +87,23 @@ serve(async (req) => {
     console.log(`[1/5] Checking user-submitted content...`);
     const { data: userContent } = await supabase
       .from("book_content")
-      .select("description, subjects")
+      .select("description, key_characters, subjects")
       .eq("book_id", bookId)
       .eq("approved", true)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
       
+    let keyCharacters: string[] = [];
+    
     if (userContent?.description) {
       bookDescription = userContent.description;
       bookSubjects = userContent.subjects || [];
+      keyCharacters = userContent.key_characters || [];
       contentSource = "user_curated";
       console.log(`✓ User-Curated Content: Found description (${bookDescription.length} chars)`);
       console.log(`  Subjects: ${bookSubjects.slice(0, 5).join(', ')}`);
+      console.log(`  Characters: ${keyCharacters.slice(0, 3).join(', ')}`);
       console.log(`⚡ Using curated content - skipping external APIs`);
     }
 
@@ -387,6 +391,12 @@ CRITICAL: If you cannot find reliable information about this specific book, resp
     const systemPrompt = `You are an expert reading comprehension test creator for children's books. Your ONLY job is to test if a child understood the STORY they read - the narrative, characters, plot, settings, emotions, and themes.
 
 EDUCATIONAL GOAL: Create questions that verify the child read and understood the story's content, NOT the physical book features.
+
+${keyCharacters.length > 0 ? `MAIN CHARACTERS IN THIS STORY:
+${keyCharacters.map(c => `- ${c}`).join('\n')}
+
+USE THESE CHARACTER DETAILS to create specific questions about character names, traits, actions, and interactions.
+` : ''}
 
 ABSOLUTELY FORBIDDEN - NEVER ask about:
 ❌ Physical book features (pop-ups, flaps, stickers, lift-the-flap, touch-and-feel, interactive elements)
