@@ -10,12 +10,6 @@ const Home = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   useEffect(() => {
-    // Check age verification on mount
-    const ageVerified = localStorage.getItem("age_verified");
-    if (!ageVerified) {
-      navigate("/age-gate");
-      return;
-    }
     checkAuth();
   }, [navigate]);
   const checkAuth = async () => {
