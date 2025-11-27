@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Star, TrendingUp, Users, BookPlus } from "lucide-react";
+import { BookOpen, Star, TrendingUp, Users, BookPlus, LayoutDashboard } from "lucide-react";
 import mascotBulldog from "@/assets/mascot-bulldog.png";
 import AuthButton from "@/components/AuthButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 const Home = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,6 +28,15 @@ const Home = () => {
       if (hasParentOrTeacher) {
         setUserRole(roles?.find(r => r.role === "parent" || r.role === "teacher")?.role || null);
       }
+    }
+  };
+
+  const handleDashboardClick = () => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    } else {
+      navigate("/login");
+      toast.info("Create an account to track your reading progress!");
     }
   };
   return <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
@@ -72,6 +82,21 @@ const Home = () => {
             <Star className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
             ⭐ Popular books
           </Button>
+
+          <div className="space-y-2">
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="w-full min-h-[56px]" 
+              onClick={handleDashboardClick}
+            >
+              <LayoutDashboard className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+              📊 My Progress
+            </Button>
+            <p className="text-xs sm:text-sm text-muted-foreground text-center font-medium">
+              Track points • Earn badges • Build streaks 🔥
+            </p>
+          </div>
         </div>
 
         {/* Footer */}
