@@ -205,13 +205,14 @@ Return ONLY valid JSON with this structure:
         messages: [
           {
             role: "system",
-            content: "You are a children's literature expert who analyzes books to create detailed summaries and age-appropriate assessments. Always return valid JSON."
+            content: "You are a children's literature expert who analyzes books to create detailed summaries and age-appropriate assessments. Use web search to find accurate age recommendations from publishers and bookstores. Always return valid JSON."
           },
           {
             role: "user",
             content: enrichmentPrompt
           }
         ],
+        tools: [{ google_search: {} }]  // Enable Google Search grounding for accurate age ranges
       }),
     });
 

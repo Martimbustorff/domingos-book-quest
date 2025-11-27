@@ -32,7 +32,19 @@ async function logRequest(supabase: any, ipAddress: string, endpoint: string) {
   });
 }
 
-// Age verification using AI
+// Heuristic check for obvious kids book patterns
+function likelyKidsBook(title: string): boolean {
+  const kidsPatterns = [
+    /\b(do|does|can|why|what|how|where)\s+\w+s?\s+/i,  // Question titles
+    /\b(lion|bear|bunny|rabbit|cat|dog|dragon|dinosaur|unicorn|elephant|giraffe|monkey|panda)\b/i,  // Animal characters
+    /\b(bedtime|goodnight|abc|123|colors|colours|shapes|counting)\b/i,  // Common kids topics
+    /\b(little|tiny|baby|mr\.|mrs\.|miss|dr\.)\b/i,  // Diminutives & character titles
+    /\b(story|tale|adventure|magical|magic)\s+(of|about|for)\b/i,  // Story keywords
+  ];
+  return kidsPatterns.some(p => p.test(title));
+}
+
+// Age verification using AI with Google Search grounding
 async function verifyKidsBook(title: string, author: string | null): Promise<{
   isKidsBook: boolean;
   ageMin: number | null;
@@ -40,7 +52,45 @@ async function verifyKidsBook(title: string, author: string | null): Promise<{
 }> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
-  const prompt = `Is "${title}"${author ? ` by ${author}` : ''} a children's book appropriate for kids aged 12 or under?
+  // Layer 1: Heuristic pre-check for obvious kids books
+  const likelyKids = likelyKidsBook(title);
+  console.log(`[VERIFY] "${title}" - Heuristic check: ${likelyKids ? "LIKELY kids book" : "uncertain"}`);
+  
+  // Layer 2: Google Books API fallback
+  let googleBooksCategory = null;
+  try {
+    const query = encodeURIComponent(`intitle:${title}${author ? ` inauthor:${author}` : ""}`);
+    const googleBooksUrl = `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=1`;
+    const googleResponse = await fetch(googleBooksUrl);
+    
+    if (googleResponse.ok) {
+      const googleData = await googleResponse.json();
+      if (googleData.items && googleData.items[0]) {
+        const categories = googleData.items[0].volumeInfo?.categories || [];
+        googleBooksCategory = categories.join(", ");
+        const isKidsCategory = categories.some((cat: string) => 
+          /juvenile|children|kids|young readers|picture book/i.test(cat)
+        );
+        console.log(`[VERIFY] Google Books categories: ${googleBooksCategory} - Kids category: ${isKidsCategory}`);
+        
+        if (isKidsCategory) {
+          // If Google Books confirms it's a kids book, return early
+          return { isKidsBook: true, ageMin: 5, ageMax: 10 }; // Default range, AI will refine
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[VERIFY] Google Books API error:", error);
+  }
+  
+  // Layer 3: AI verification with Google Search grounding
+  const prompt = `Search the web for "${title}"${author ? ` by ${author}` : ''} and determine if it's a children's book appropriate for kids aged 12 or under.
+
+Use web search to find:
+- Publisher descriptions and age recommendations
+- Bookstore listings (e.g., Amazon, BookHero, Scholastic)
+- Library classifications
+- Reader reviews mentioning target age
 
 Respond with ONLY a JSON object in this exact format:
 {
@@ -64,14 +114,20 @@ Rules:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are a children's book expert. Respond only with valid JSON." },
+          { role: "system", content: "You are a children's book expert with access to web search. Always search the web to verify book information. Respond only with valid JSON." },
           { role: "user", content: prompt }
         ],
+        tools: [{ google_search: {} }]  // Enable Google Search grounding
       }),
     });
 
     if (!response.ok) {
-      console.error("AI verification failed:", response.status);
+      console.error(`[VERIFY] AI verification failed: ${response.status}`);
+      // If heuristics suggest kids book, be optimistic
+      if (likelyKids) {
+        console.log(`[VERIFY] Defaulting to kids book based on heuristics`);
+        return { isKidsBook: true, ageMin: 5, ageMax: 10 };
+      }
       return { isKidsBook: false, ageMin: null, ageMax: null };
     }
 
@@ -79,13 +135,20 @@ Rules:
     const content = data.choices[0].message.content;
     const parsed = JSON.parse(content);
     
+    console.log(`[VERIFY] AI result: isKidsBook=${parsed.isKidsBook}, ages=${parsed.ageMin}-${parsed.ageMax}`);
+    
     return {
       isKidsBook: parsed.isKidsBook === true,
       ageMin: parsed.ageMin,
       ageMax: parsed.ageMax,
     };
   } catch (error) {
-    console.error("Age verification error:", error);
+    console.error("[VERIFY] Age verification error:", error);
+    // If heuristics suggest kids book and AI fails, be optimistic
+    if (likelyKids) {
+      console.log(`[VERIFY] Defaulting to kids book based on heuristics after error`);
+      return { isKidsBook: true, ageMin: 5, ageMax: 10 };
+    }
     return { isKidsBook: false, ageMin: null, ageMax: null };
   }
 }
