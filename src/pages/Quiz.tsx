@@ -296,7 +296,12 @@ const Quiz = () => {
         <div className="space-y-3">
           <div className="flex justify-between text-sm font-medium">
             <span className="text-muted-foreground">Question {currentQuestion + 1} of {questions.length}</span>
-            <span className="text-foreground font-semibold">Score: {score}</span>
+            <span className={cn(
+              "text-foreground font-semibold transition-transform",
+              showFeedback && selectedAnswer === currentQ.correct_index && "animate-bounce"
+            )}>
+              Score: {score}
+            </span>
           </div>
           <Progress value={progress} className="h-4" />
         </div>
@@ -321,6 +326,7 @@ const Quiz = () => {
         {/* Options */}
         <div className="space-y-4 w-full" key={`question-${currentQuestion}`}>
           {currentQ.options.map((option, index) => {
+            const optionLetter = ['A', 'B', 'C', 'D'][index];
             const isSelected = selectedAnswer === index;
             const isCorrect = index === currentQ.correct_index;
             const showCorrect = showFeedback && isCorrect;
@@ -331,17 +337,24 @@ const Quiz = () => {
                 key={index}
                 onClick={() => handleAnswerSelect(index)}
                 className={cn(
-                  "w-full p-4 text-left font-medium text-base min-h-[56px] rounded-xl h-auto whitespace-normal justify-start",
-                  !showFeedback && "border-2 border-border bg-white hover:bg-muted hover:border-primary",
-                  showCorrect && "border-2 border-quiz-correct-border bg-quiz-correct",
-                  showWrong && "border-2 border-quiz-wrong-border bg-quiz-wrong"
+                  "w-full p-4 text-left font-medium text-base min-h-[56px] rounded-xl h-auto whitespace-normal justify-start transition-all duration-150 shadow-sm",
+                  !showFeedback && !isSelected && "border-2 border-gray-200 bg-white text-foreground",
+                  !showFeedback && "active:scale-[0.98] active:bg-gray-50",
+                  showCorrect && "border-2 border-quiz-correct-border bg-quiz-correct text-foreground",
+                  showWrong && "border-2 border-quiz-wrong-border bg-quiz-wrong text-foreground"
                 )}
                 disabled={showFeedback}
-                variant="outline"
+                variant="ghost"
+                style={{ outline: 'none', boxShadow: showFeedback ? undefined : '0 1px 3px rgba(0,0,0,0.1)' }}
               >
-                <span className="flex-1">{option}</span>
-                {showCorrect && <span className="text-2xl ml-2">✓</span>}
-                {showWrong && <span className="text-2xl ml-2 opacity-50">✗</span>}
+                <span className="flex items-center gap-3 w-full">
+                  <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 flex-shrink-0">
+                    {optionLetter}
+                  </span>
+                  <span className="flex-1">{option}</span>
+                  {showCorrect && <span className="text-2xl ml-2">✓</span>}
+                  {showWrong && <span className="text-2xl ml-2 opacity-50">✗</span>}
+                </span>
               </Button>
             );
           })}
