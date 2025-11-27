@@ -53,6 +53,13 @@ const Quiz = () => {
         });
 
         if (error) {
+          // Check if it's a service unavailable error (AI credits exhausted)
+          if (data?.error === "service_unavailable") {
+            toast.error(data.message || "Quiz generation is temporarily unavailable. Please try again later.");
+            navigate(`/book/${bookId}`);
+            throw new Error("service_unavailable");
+          }
+          
           // Check if it's an insufficient_data error (422 status)
           if (data?.error === "insufficient_data") {
             toast.error(data.message || "This book doesn't have enough content to generate a quiz.");
@@ -88,8 +95,12 @@ const Quiz = () => {
 
         return data;
       } catch (error: any) {
-        // Re-throw known errors
-        if (error.message === "insufficient_data" || error.message === "network_error") {
+        // Re-throw known errors (don't retry)
+        if (
+          error.message === "service_unavailable" ||
+          error.message === "insufficient_data" || 
+          error.message === "network_error"
+        ) {
           throw error;
         }
         

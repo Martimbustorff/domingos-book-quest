@@ -540,6 +540,21 @@ Return ONLY valid JSON in this exact format:
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error("AI API error:", aiResponse.status, errorText);
+      
+      // Handle payment/credit issues specifically
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({
+            error: "service_unavailable",
+            message: "Quiz generation is temporarily unavailable. Please try again later.",
+          }),
+          {
+            status: 503, // Service Unavailable
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
       throw new Error(`AI generation failed: ${aiResponse.status}`);
     }
 
