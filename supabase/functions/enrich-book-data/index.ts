@@ -375,6 +375,40 @@ Return ONLY valid JSON with this structure:
   result.success = !!(coverUrl || description);
   console.log(`[ENRICH] Enrichment complete. Success: ${result.success}, Sources: ${result.sources_used.join(", ")}`);
   
+  // ✅ PHASE 2: Pre-generate quizzes if enrichment succeeded
+  if (result.success && description) {
+    console.log(`[ENRICH] 📝 Pre-generating quizzes for all difficulty levels...`);
+    const difficulties = ['easy', 'medium', 'hard'];
+    
+    for (const difficulty of difficulties) {
+      try {
+        console.log(`[ENRICH]   Generating ${difficulty} quiz...`);
+        
+        // Call generate-quiz function internally
+        const quizResponse = await supabase.functions.invoke('generate-quiz', {
+          body: { 
+            bookId: bookId, 
+            numQuestions: 10, 
+            difficulty: difficulty 
+          }
+        });
+        
+        if (quizResponse.error) {
+          console.error(`[ENRICH]   ✗ Failed to generate ${difficulty} quiz:`, quizResponse.error);
+        } else {
+          console.log(`[ENRICH]   ✓ ${difficulty} quiz generated successfully`);
+        }
+        
+        // Small delay between difficulty levels
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`[ENRICH]   ✗ Error generating ${difficulty} quiz:`, error);
+      }
+    }
+    
+    console.log(`[ENRICH] Quiz pre-generation complete`);
+  }
+  
   return result;
 }
 

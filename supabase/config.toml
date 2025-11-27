@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.enrich-book-data]
 verify_jwt = false
+
+[functions.batch-generate-quizzes]
+verify_jwt = false

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, logRequest } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,6 +63,28 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // ✅ PHASE 4: Rate limiting (safety net)
+    const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || 
+                     req.headers.get("x-real-ip") || 
+                     "unknown";
+    
+    const isRateLimited = await checkRateLimit(supabase, ipAddress, "generate-quiz");
+    if (isRateLimited) {
+      console.warn(`Rate limit exceeded for IP: ${ipAddress}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "rate_limit_exceeded",
+          message: "Too many quiz generation requests. Please try again in a minute." 
+        }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+    
+    await logRequest(supabase, ipAddress, "generate-quiz");
+
     // Get book details
     const { data: book, error: bookError } = await supabase
       .from("books")
@@ -73,11 +96,43 @@ serve(async (req) => {
       throw new Error("Book not found");
     }
 
+    // ✅ PHASE 1: CHECK CACHE FIRST! Before any content fetching
+    const ageBandMap: Record<string, string> = {
+      easy: "5-6",
+      medium: "7-8",
+      hard: "9-10"
+    };
+    const ageBand = ageBandMap[difficulty] || "7-8";
+
+    console.log(`🔍 Checking cache for book ${bookId}, age_band: ${ageBand}, num_questions: ${numQuestions}`);
+    const { data: existingQuiz, error: cacheError } = await supabase
+      .from("quiz_templates")
+      .select("questions_json, content_source, created_at")
+      .eq("book_id", bookId)
+      .eq("age_band", ageBand)
+      .eq("num_questions", numQuestions)
+      .maybeSingle();
+
+    if (existingQuiz && !cacheError) {
+      console.log(`✅ CACHE HIT! Returning existing quiz (source: ${existingQuiz.content_source}, created: ${existingQuiz.created_at})`);
+      return new Response(
+        JSON.stringify({
+          questions: existingQuiz.questions_json,
+          source: "cached",
+          cached_at: existingQuiz.created_at,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log(`⚠️ CACHE MISS - Generating new quiz (will be expensive)...`);
+    console.log(`Book: "${book.title}" by ${book.author || 'unknown'}`);
+
+
     // Fetch book content from multiple sources
     console.log(`=== Content Fetching Started ===`);
-    console.log(`Book: "${book.title}" by ${book.author || 'unknown'}`);
-    console.log(`Book ID: ${bookId}`);
-    console.log(`Open Library ID: ${book.open_library_id || 'none'}`);
     
     let bookDescription = "";
     let bookSubjects: string[] = [];
@@ -341,36 +396,6 @@ CRITICAL: If you cannot find reliable information about this specific book, resp
         }),
         {
           status: 422,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Map difficulty to age band
-    const ageBandMap: Record<string, string> = {
-      easy: "5-6",
-      medium: "7-8",
-      hard: "9-10",
-    };
-    const ageBand = ageBandMap[difficulty] || "7-8";
-
-    // Check if quiz template already exists
-    const { data: existingQuiz } = await supabase
-      .from("quiz_templates")
-      .select("*")
-      .eq("book_id", bookId)
-      .eq("age_band", ageBand)
-      .eq("num_questions", numQuestions)
-      .maybeSingle();
-
-    if (existingQuiz) {
-      console.log("Using existing quiz template");
-      return new Response(
-        JSON.stringify({
-          questions: existingQuiz.questions_json,
-          source: existingQuiz.source,
-        }),
-        {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
