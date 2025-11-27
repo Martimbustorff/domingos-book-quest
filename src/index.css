@@ -47,11 +47,11 @@ All colors MUST be HSL.
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 85% 97%;
 
-    /* Quiz Colors */
-    --quiz-correct: 142 76% 95%;
-    --quiz-correct-border: 142 71% 45%;
-    --quiz-wrong: 0 86% 95%;
-    --quiz-wrong-border: 0 84% 60%;
+    /* Quiz Colors - Vibrant and engaging */
+    --quiz-correct: 140 70% 92%;
+    --quiz-correct-border: 140 75% 40%;
+    --quiz-wrong: 0 80% 92%;
+    --quiz-wrong-border: 0 80% 55%;
 
     /* Chart colors */
     --chart-1: 27 95% 60%;
@@ -116,10 +116,10 @@ All colors MUST be HSL.
     --success: 140 80% 55%;
     --success-foreground: 0 0% 100%;
 
-    --quiz-correct: 140 60% 20%;
+    --quiz-correct: 140 65% 25%;
     --quiz-correct-border: 140 80% 55%;
-    --quiz-wrong: 15 70% 20%;
-    --quiz-wrong-border: 15 95% 68%;
+    --quiz-wrong: 10 75% 25%;
+    --quiz-wrong-border: 10 95% 68%;
 
     --glass-bg: rgba(30, 30, 50, 0.7);
     --glass-border: rgba(255, 255, 255, 0.1);
