@@ -379,8 +379,8 @@ If you cannot find information about this EXACT book (matching both title AND au
     console.log(`Description length: ${bookDescription ? bookDescription.length : 0} chars`);
     console.log(`Subjects found: ${bookSubjects.length}\n`);
 
-    // Validate that description actually matches the book
-    if (bookDescription) {
+    // Validate that description actually matches the book (SKIP for user-curated content)
+    if (bookDescription && contentSource !== "user_curated") {
       const descLower = bookDescription.toLowerCase();
       const titleWords = book.title.toLowerCase().split(' ').filter((w: string) => w.length > 3);
       
@@ -402,6 +402,8 @@ If you cannot find information about this EXACT book (matching both title AND au
       } else {
         console.log(`✓ Content validation passed`);
       }
+    } else if (contentSource === "user_curated") {
+      console.log(`✓ User-curated content: skipping validation (already verified)`);
     }
 
     // Clean promotional content from description
