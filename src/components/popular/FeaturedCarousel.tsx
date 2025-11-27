@@ -9,34 +9,30 @@ interface FeaturedCarouselProps {
 export const FeaturedCarousel = ({ books }: FeaturedCarouselProps) => {
   const navigate = useNavigate();
   const topThree = books.slice(0, 3);
-  const rankIcons = ["🥇", "🥈", "🥉"];
   
-  // Reorder to show gold in center: [silver, gold, bronze]
-  const podiumOrder = [topThree[1], topThree[0], topThree[2]];
-  const iconOrder = [rankIcons[1], rankIcons[0], rankIcons[2]];
+  const getBadgeColor = (index: number) => {
+    if (index === 0) return "bg-amber-500 text-white"; // Gold
+    if (index === 1) return "bg-slate-400 text-white"; // Silver
+    return "bg-amber-700 text-white"; // Bronze
+  };
 
   return (
-    <div className="flex items-end justify-center gap-2 px-2">
-      {podiumOrder.map((book, visualIndex) => {
+    <div className="flex items-stretch justify-center gap-2 px-2">
+      {topThree.map((book, index) => {
         if (!book) return null;
-        
-        const isGold = visualIndex === 1;
-        const heightClass = isGold ? "h-40" : "h-32";
         
         return (
           <div
             key={book.book_id}
             onClick={() => navigate(`/book/${book.book_id}`)}
-            className={`flex-1 cursor-pointer transition-all duration-300 active:scale-95 animate-fade-in ${
-              isGold ? "scale-105" : ""
-            }`}
-            style={{ animationDelay: `${visualIndex * 100}ms` }}
+            className="flex-1 cursor-pointer transition-all duration-300 active:scale-95 animate-fade-in"
+            style={{ animationDelay: `${index * 100}ms` }}
           >
-            <div className={`bg-card border-2 ${isGold ? 'border-primary/50' : 'border-border'} rounded-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 ${heightClass} flex flex-col`}>
-              {/* Medal Badge */}
-              <div className={`text-center mb-2 ${isGold ? 'text-3xl' : 'text-2xl'}`}>
-                <span className={isGold ? 'animate-bounce-subtle inline-block' : ''}>
-                  {iconOrder[visualIndex]}
+            <div className="bg-card border border-border rounded-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 h-full flex flex-col">
+              {/* Rank Badge */}
+              <div className="flex justify-center mb-2">
+                <span className={`${getBadgeColor(index)} text-xs font-bold px-2 py-1 rounded-full`}>
+                  #{index + 1}
                 </span>
               </div>
               
@@ -46,17 +42,17 @@ export const FeaturedCarousel = ({ books }: FeaturedCarouselProps) => {
                   <img
                     src={book.cover_url}
                     alt={book.title}
-                    className="w-14 h-20 object-cover rounded-lg shadow-md"
+                    className="w-16 h-24 object-cover rounded-lg shadow-md"
                   />
                 ) : (
-                  <div className="w-14 h-20 bg-muted rounded-lg flex items-center justify-center shadow-md">
+                  <div className="w-16 h-24 bg-muted rounded-lg flex items-center justify-center shadow-md">
                     <Book className="h-6 w-6 text-muted-foreground" />
                   </div>
                 )}
               </div>
               
               {/* Book Title */}
-              <p className={`text-center font-bold text-foreground line-clamp-2 ${isGold ? 'text-xs' : 'text-[10px]'} leading-tight`}>
+              <p className="text-center font-bold text-foreground line-clamp-2 text-[11px] leading-tight">
                 {book.title}
               </p>
             </div>
