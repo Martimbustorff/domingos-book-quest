@@ -749,6 +749,10 @@ export type Database = {
         Args: { book_id_param: string }
         Returns: undefined
       }
+      find_similar_book: {
+        Args: { p_author?: string; p_title: string }
+        Returns: string
+      }
       get_average_quiz_score: { Args: never; Returns: number }
       get_book_utilization: {
         Args: never
@@ -846,6 +850,18 @@ export type Database = {
         Returns: undefined
       }
       is_guardian_of: { Args: { _student_id: string }; Returns: boolean }
+      search_books_local: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          age_max: number
+          age_min: number
+          author: string
+          cover_url: string
+          id: string
+          similarity_score: number
+          title: string
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

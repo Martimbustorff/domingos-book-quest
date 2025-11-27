@@ -32,6 +32,64 @@ async function logRequest(supabase: any, ipAddress: string, endpoint: string) {
   });
 }
 
+// Age verification using AI
+async function verifyKidsBook(title: string, author: string | null): Promise<{
+  isKidsBook: boolean;
+  ageMin: number | null;
+  ageMax: number | null;
+}> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  const prompt = `Is "${title}"${author ? ` by ${author}` : ''} a children's book appropriate for kids aged 12 or under?
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "isKidsBook": true/false,
+  "ageMin": <number or null>,
+  "ageMax": <number or null>
+}
+
+Rules:
+- isKidsBook: true if the book is appropriate for children aged 12 or under
+- ageMin/ageMax: Estimated age range in 1-year bands (e.g., 5-6, 7-8, 9-10, 11-12)
+- If NOT a kids book, set isKidsBook to false and both ages to null`;
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: "You are a children's book expert. Respond only with valid JSON." },
+          { role: "user", content: prompt }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("AI verification failed:", response.status);
+      return { isKidsBook: false, ageMin: null, ageMax: null };
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    const parsed = JSON.parse(content);
+    
+    return {
+      isKidsBook: parsed.isKidsBook === true,
+      ageMin: parsed.ageMin,
+      ageMax: parsed.ageMax,
+    };
+  } catch (error) {
+    console.error("Age verification error:", error);
+    return { isKidsBook: false, ageMin: null, ageMax: null };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -73,120 +131,162 @@ serve(async (req) => {
 
     console.log("Searching for books with query:", query);
 
-    // First, search local database
-    const { data: localBooks, error: localError } = await supabase
-      .from("books")
-      .select("*")
-      .ilike("title", `%${query}%`)
-      .limit(10);
+    // PHASE 1: Search local database first using fuzzy matching
+    const { data: localBooks, error: localError } = await supabase.rpc(
+      "search_books_local",
+      { p_query: query, p_limit: 10 }
+    );
 
     if (localError) {
       console.error("Local search error:", localError);
     }
 
-    // Also search Open Library API
-    let openLibraryBooks: any[] = [];
-    try {
-      const openLibraryUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(
-        query
-      )}&limit=10`;
-      const openLibraryResponse = await fetch(openLibraryUrl);
-      const openLibraryData = await openLibraryResponse.json();
+    const localResults = (localBooks || []).map((book: any) => ({
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      cover_url: book.cover_url,
+      age_min: book.age_min,
+      age_max: book.age_max,
+      available: true,
+    }));
 
-      openLibraryBooks = (openLibraryData.docs || []).map((doc: any) => ({
-        open_library_id: doc.key,
-        title: doc.title,
-        author: doc.author_name?.[0] || "Unknown Author",
-        cover_url: doc.cover_i
-          ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
-          : null,
-        first_publish_year: doc.first_publish_year,
-      }));
-
-      console.log(`Found ${openLibraryBooks.length} books from Open Library`);
-    } catch (error) {
-      console.error("Open Library API error:", error);
+    // If we have sufficient local results, return immediately (no API call)
+    if (localResults.length >= 5) {
+      console.log(`Found ${localResults.length} local results, skipping Open Library`);
+      return new Response(
+        JSON.stringify({ books: localResults }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Merge results, prioritizing local books
-    const bookMap = new Map();
+    // PHASE 2: Supplement with Open Library if needed
+    console.log(`Only ${localResults.length} local results, querying Open Library`);
+    
+    const openLibraryUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`;
+    const openLibraryResponse = await fetch(openLibraryUrl);
 
-    // Add local books first
-    (localBooks || []).forEach((book) => {
-      bookMap.set(book.id, book);
-    });
+    if (!openLibraryResponse.ok) {
+      console.error("Open Library API error:", openLibraryResponse.status);
+      return new Response(
+        JSON.stringify({ books: localResults }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Add Open Library books that aren't already in local database
-    for (const book of openLibraryBooks) {
-      // Check if book already exists
-      const { data: existing } = await supabase
-        .from("books")
-        .select("id")
-        .eq("title", book.title)
-        .maybeSingle();
+    const openLibraryData = await openLibraryResponse.json();
+    const apiBooks = openLibraryData.docs || [];
 
-      if (!existing) {
-        // Insert new book from Open Library
-        // NOTE: age_min and age_max are intentionally left as NULL
-        // Books without age verification will not appear in Popular Books
-        // until an admin manually verifies and sets appropriate age ranges
-        const { data: newBook, error } = await supabase
+    // Process API books
+    const processedApiBooks = [];
+    
+    for (const book of apiBooks) {
+      const title = book.title;
+      const author = book.author_name?.[0] || null;
+
+      if (!title) continue;
+
+      // PHASE 3: Check for duplicates using fuzzy matching
+      const { data: existingBookId, error: dupeError } = await supabase.rpc(
+        "find_similar_book",
+        { p_title: title, p_author: author }
+      );
+
+      if (dupeError) {
+        console.error("Duplicate check error:", dupeError);
+      }
+
+      if (existingBookId) {
+        // Book already exists, fetch it
+        const { data: existingBook } = await supabase
+          .from("books")
+          .select("*")
+          .eq("id", existingBookId)
+          .single();
+
+        if (existingBook) {
+          processedApiBooks.push({
+            id: existingBook.id,
+            title: existingBook.title,
+            author: existingBook.author,
+            cover_url: existingBook.cover_url,
+            age_min: existingBook.age_min,
+            age_max: existingBook.age_max,
+            available: true,
+          });
+        }
+        continue;
+      }
+
+      // PHASE 4: New book - verify if it's a kids book using AI
+      console.log(`Verifying new book: ${title}`);
+      const verification = await verifyKidsBook(title, author);
+
+      const coverUrl = book.cover_i
+        ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`
+        : null;
+
+      if (verification.isKidsBook && verification.ageMax && verification.ageMax <= 12) {
+        // Kids book - insert to database
+        const { data: newBook, error: insertError } = await supabase
           .from("books")
           .insert({
-            open_library_id: book.open_library_id,
-            title: book.title,
-            author: book.author,
-            cover_url: book.cover_url,
-            // age_min: null, age_max: null (implicit - no defaults in schema)
+            title: title,
+            author: author,
+            cover_url: coverUrl,
+            open_library_id: book.key?.replace("/works/", ""),
+            age_min: verification.ageMin,
+            age_max: verification.ageMax,
+            enrichment_status: "pending",
           })
           .select()
           .single();
 
-        if (!error && newBook) {
-          bookMap.set(newBook.id, newBook);
+        if (insertError) {
+          console.error("Insert error:", insertError);
+        } else if (newBook) {
+          console.log(`✅ Added kids book: ${title} (ages ${verification.ageMin}-${verification.ageMax})`);
+          processedApiBooks.push({
+            id: newBook.id,
+            title: newBook.title,
+            author: newBook.author,
+            cover_url: newBook.cover_url,
+            age_min: newBook.age_min,
+            age_max: newBook.age_max,
+            available: true,
+          });
         }
       } else {
-        // Use existing book
-        const { data: existingBook } = await supabase
-          .from("books")
-          .select("*")
-          .eq("id", existing.id)
-          .single();
-
-        if (existingBook) {
-          bookMap.set(existingBook.id, existingBook);
-        }
+        // NOT a kids book - return as unavailable but DON'T store
+        console.log(`❌ Not a kids book: ${title}`);
+        processedApiBooks.push({
+          id: `temp-${book.key}`, // Temporary ID for display only
+          title: title,
+          author: author,
+          cover_url: coverUrl,
+          age_min: null,
+          age_max: null,
+          available: false,
+        });
       }
     }
 
-    const books = Array.from(bookMap.values()).slice(0, 10);
+    // Merge local and API results, remove duplicates
+    const allBooks = [...localResults];
+    const existingIds = new Set(localResults.map((b: any) => b.id));
 
-    // Background enrichment: Trigger enrichment for new books without blocking response
-    const newBooksNeedingEnrichment = books.filter(
-      (book) => !book.cover_url || !book.age_min || !book.age_max
-    );
-
-    if (newBooksNeedingEnrichment.length > 0) {
-      console.log(`[SEARCH] Triggering background enrichment for ${newBooksNeedingEnrichment.length} books`);
-      
-      // Fire-and-forget: enrich books in background without awaiting
-      fetch(`${supabaseUrl}/functions/v1/enrich-book-data`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          book_ids: newBooksNeedingEnrichment.map((b) => b.id),
-        }),
-      }).catch((err) => {
-        console.error("[SEARCH] Background enrichment trigger failed:", err);
-      });
+    for (const apiBook of processedApiBooks) {
+      if (!existingIds.has(apiBook.id)) {
+        allBooks.push(apiBook);
+        existingIds.add(apiBook.id);
+      }
     }
 
-    return new Response(JSON.stringify({ books }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ books: allBooks.slice(0, 10) }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
   } catch (error) {
     console.error("Search books error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";

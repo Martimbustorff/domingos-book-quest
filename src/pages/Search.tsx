@@ -94,34 +94,47 @@ const Search = () => {
 
         {searchResults && searchResults.length > 0 && (
           <div className="space-y-4 sm:space-y-6">
-            {searchResults.map((book: any, index: number) => (
-              <Card
-                key={book.id}
-                className="p-5 sm:p-6 cursor-pointer card-lift quiz-button animate-fade-in-up min-h-[100px]"
-                style={{ animationDelay: `${index * 50}ms` }}
-                onClick={() => navigate(`/book/${book.id}`)}
-              >
-                <div className="flex gap-4 sm:gap-6 items-start">
-                  {book.cover_url ? (
-                    <img
-                      src={book.cover_url}
-                      alt={book.title}
-                      className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-[12px] shadow-lg flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-16 h-20 sm:w-20 sm:h-24 bg-muted rounded-[12px] flex items-center justify-center flex-shrink-0">
-                      <Book className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-lg sm:text-xl mb-1 leading-tight">{book.title}</h3>
-                    {book.author && (
-                      <p className="text-muted-foreground font-medium text-sm sm:text-base">by {book.author}</p>
+            {searchResults.map((book: any, index: number) => {
+              const isAvailable = book.available !== false;
+              
+              return (
+                <Card
+                  key={book.id}
+                  className={`p-5 sm:p-6 animate-fade-in-up min-h-[100px] ${
+                    isAvailable 
+                      ? 'cursor-pointer card-lift quiz-button' 
+                      : 'opacity-60 cursor-not-allowed'
+                  }`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                  onClick={() => isAvailable && navigate(`/book/${book.id}`)}
+                >
+                  <div className="flex gap-4 sm:gap-6 items-start">
+                    {book.cover_url ? (
+                      <img
+                        src={book.cover_url}
+                        alt={book.title}
+                        className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-[12px] shadow-lg flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-20 sm:w-20 sm:h-24 bg-muted rounded-[12px] flex items-center justify-center flex-shrink-0">
+                        <Book className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
+                      </div>
                     )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-lg sm:text-xl mb-1 leading-tight">{book.title}</h3>
+                      {book.author && (
+                        <p className="text-muted-foreground font-medium text-sm sm:text-base">by {book.author}</p>
+                      )}
+                      {!isAvailable && (
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-2 italic">
+                          Not available for quizzes (not a children's book)
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
 

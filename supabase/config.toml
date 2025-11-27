@@ -3,9 +3,6 @@ project_id = "hoxubepipusimfbkzbxr"
 [functions.search-books]
 verify_jwt = false
 
-[functions.get-book-media]
-verify_jwt = false
-
 [functions.generate-quiz]
 verify_jwt = false
 
