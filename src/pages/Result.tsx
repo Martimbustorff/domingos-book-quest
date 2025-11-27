@@ -22,6 +22,7 @@ const Result = () => {
 
   const percentage = Math.round((score / total) * 100);
   const [points, setPoints] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Optimistic mutation for saving results
   const saveResultsMutation = useMutation({
@@ -100,6 +101,7 @@ const Result = () => {
 
       // Save to database if user is authenticated
       const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
       
       if (user && bookId) {
         saveResultsMutation.mutate({
@@ -204,15 +206,37 @@ const Result = () => {
             📚 Choose another book
           </Button>
 
-          <Button
-            size="lg"
-            variant="accent"
-            className="w-full min-h-[56px]"
-            onClick={() => navigate("/dashboard")}
-          >
-            <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
-            📊 View Dashboard
-          </Button>
+          {!isAuthenticated ? (
+            <Card className="p-6 bg-gradient-to-br from-primary/10 to-accent/10 border-2 border-primary/30">
+              <div className="space-y-4 text-center">
+                <p className="text-lg font-semibold text-foreground">
+                  🎉 Great job! Want to save your progress?
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Create an account to track points, earn badges, and build your reading streak!
+                </p>
+                <Button
+                  size="lg"
+                  variant="accent"
+                  className="w-full min-h-[56px]"
+                  onClick={() => navigate("/signup")}
+                >
+                  <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+                  🏆 Create Account
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <Button
+              size="lg"
+              variant="accent"
+              className="w-full min-h-[56px]"
+              onClick={() => navigate("/dashboard")}
+            >
+              <TrendingUp className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+              📊 View Dashboard
+            </Button>
+          )}
 
           <Button
             size="lg"
