@@ -305,11 +305,24 @@ If you cannot find information about this EXACT book (matching both title AND au
             }
           }
           
-          if (bestMatch && bestMatchScore >= 50) {
+          // For books with matching author but different title (translations, alternate titles),
+          // use a lower threshold since children's books often have international editions
+          let bestMatchHasAuthor = false;
+          if (bestMatch && book.author && bestMatch.authors) {
+            const normalizedBookAuthor = book.author.toLowerCase().trim();
+            bestMatchHasAuthor = bestMatch.authors.some((a: string) => 
+              a.toLowerCase().includes(normalizedBookAuthor) || 
+              normalizedBookAuthor.includes(a.toLowerCase())
+            );
+          }
+          
+          const minThreshold = bestMatchHasAuthor && bestMatchScore >= 30 ? 30 : 50;
+          
+          if (bestMatch && bestMatchScore >= minThreshold) {
             bookDescription = bestMatch.description;
             bookSubjects = bestMatch.categories || [];
             contentSource = "google_books";
-            console.log(`✓ Google Books: Found description (${bookDescription.length} chars)`);
+            console.log(`✓ Google Books: Found description (${bookDescription.length} chars, score: ${bestMatchScore})`);
             console.log(`Subjects found: ${bookSubjects.length}\n`);
           } else {
             console.log(`✗ Google Books: No confident match found (best score: ${bestMatchScore})`);
@@ -325,15 +338,21 @@ If you cannot find information about this EXACT book (matching both title AND au
       try {
         console.log(`[4/5] Fetching from Open Library: ${book.open_library_id}`);
         
+        // Normalize the Open Library ID to ensure it has the correct format
+        let olId = book.open_library_id;
+        if (!olId.startsWith('/')) {
+          olId = `/works/${olId}`;
+        }
+        
         // Try /works/ endpoint first
         let olResponse = await fetchWithTimeout(
-          `https://openlibrary.org${book.open_library_id}.json`,
+          `https://openlibrary.org${olId}.json`,
           10000
         );
         
         // If /works/ fails, try /books/ endpoint
-        if (!olResponse.ok && book.open_library_id.includes('/works/')) {
-          const bookEndpoint = book.open_library_id.replace('/works/', '/books/');
+        if (!olResponse.ok && olId.includes('/works/')) {
+          const bookEndpoint = olId.replace('/works/', '/books/');
           console.log(`  Trying alternative endpoint: ${bookEndpoint}`);
           olResponse = await fetchWithTimeout(
             `https://openlibrary.org${bookEndpoint}.json`,
