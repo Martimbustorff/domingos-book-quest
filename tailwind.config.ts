@@ -142,6 +142,20 @@ export default {
 					opacity: '1',
 					transform: 'translateY(0)'
 				}
+			},
+			'progress-pulse': {
+				'0%': {
+					transform: 'scaleY(1)',
+					filter: 'brightness(1)'
+				},
+				'50%': {
+					transform: 'scaleY(1.3)',
+					filter: 'brightness(1.3)'
+				},
+				'100%': {
+					transform: 'scaleY(1)',
+					filter: 'brightness(1)'
+				}
 			}
 		},
 		animation: {
@@ -149,7 +163,8 @@ export default {
 			'accordion-up': 'accordion-up 0.2s ease-out',
 			'fill-bar': 'fill-bar 0.8s ease-out forwards',
 			'bounce-subtle': 'bounce-subtle 3s ease-in-out infinite',
-			'fade-in': 'fade-in 0.3s ease-out'
+			'fade-in': 'fade-in 0.3s ease-out',
+			'progress-pulse': 'progress-pulse 0.5s ease-out'
 		}
   	}
   },
